@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en" class="scroll-smooth">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos</title>
+
+  <!-- SEO / social link previews -->
+  <meta name="description" content="LUCID learns a manipulation intent model from unstructured human video and a tracking policy in simulation, pairing them for dexterous and parallel-jaw robot manipulation." />
+  <meta property="og:title" content="LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos" />
+  <meta property="og:description" content="A two-stage framework: closed-loop intent from human video + a tracking policy from massively-parallel simulation, shared across embodiments." />
+  <meta property="og:type" content="website" />
+  <meta property="og:image" content="static/images/teaser.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="static/images/teaser.png" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+          },
+          colors: {
+            // paper palette (y2r)
+            blue:     { brand: '#4A7BA6' },
+            sage:     { brand: '#7FB069' },
+            coral:    { brand: '#C97B7B' },
+            mustard:  { brand: '#E8B84A' },
+            lavender: { brand: '#9B7BB8' },
+            ink:      '#0d1117',
+          },
+        },
+      },
+    };
+  </script>
+
+  <style>
+    html { -webkit-font-smoothing: antialiased; }
+    /* scroll-reveal */
+    .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
+    .reveal.in { opacity: 1; transform: none; }
+    /* subtle grain-free gradient mesh for hero */
+    .mesh {
+      background:
+        radial-gradient(60% 60% at 15% 10%, rgba(74,123,166,.18), transparent 60%),
+        radial-gradient(55% 55% at 85% 20%, rgba(155,123,184,.16), transparent 60%),
+        radial-gradient(50% 50% at 70% 90%, rgba(127,176,105,.14), transparent 60%);
+    }
+    .video-placeholder {
+      background-image:
+        linear-gradient(135deg, rgba(127,127,127,.06) 25%, transparent 25%, transparent 50%, rgba(127,127,127,.06) 50%, rgba(127,127,127,.06) 75%, transparent 75%, transparent);
+      background-size: 22px 22px;
+    }
+    ::selection { background: rgba(74,123,166,.25); }
+  </style>
+</head>
+
+<body class="bg-white text-ink dark:bg-ink dark:text-slate-100 font-sans antialiased">
+
+  <!-- ============ NAV ============ -->
+  <nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-md bg-white/70 dark:bg-ink/70 border-b border-slate-200/60 dark:border-white/10">
+    <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
+      <a href="#top" class="font-extrabold tracking-tight text-lg">
+        <span class="text-blue-brand">LU</span><span class="text-sage-brand">CI</span><span class="text-coral-brand">D</span>
+      </a>
+      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
+        <a href="#abstract" class="hover:text-blue-brand transition">Abstract</a>
+        <a href="#method" class="hover:text-blue-brand transition">Method</a>
+        <a href="#results" class="hover:text-blue-brand transition">Results</a>
+        <a href="#generalization" class="hover:text-blue-brand transition">Generalization</a>
+        <a href="#scaling" class="hover:text-blue-brand transition">Scaling</a>
+        <a href="#bibtex" class="hover:text-blue-brand transition">BibTeX</a>
+      </div>
+      <button id="theme-toggle" aria-label="Toggle dark mode"
+        class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition">
+        <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36 6.36l-1.42-1.42M7.05 7.05L5.64 5.64m12.72 0l-1.42 1.42M7.05 16.95l-1.41 1.41M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+        <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
+      </button>
+    </div>
+  </nav>
+
+  <!-- ============ HERO ============ -->
+  <header id="top" class="relative pt-28 pb-14 mesh">
+    <div class="max-w-4xl mx-auto px-5 text-center">
+      <p class="text-sm font-semibold tracking-widest uppercase text-blue-brand mb-4">Embodiment-Agnostic Manipulation</p>
+      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
+        <span class="text-blue-brand">LUCID</span>: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos for Scalable Dexterous Robot Skill Acquisition
+      </h1>
+
+      <!-- authors -->
+      <div class="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-base sm:text-lg font-medium">
+        <a href="#" class="hover:text-blue-brand transition">Harsh Gupta<sup class="text-coral-brand">†</sup></a>
+        <a href="#" class="hover:text-blue-brand transition">Guanya Shi<sup class="text-coral-brand">*</sup></a>
+        <a href="#" class="hover:text-blue-brand transition">Wenzhen Yuan<sup class="text-coral-brand">*</sup></a>
+      </div>
+      <div class="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
+        <span>University of Illinois Urbana-Champaign</span>
+        <span>Carnegie Mellon University</span>
+      </div>
+      <!-- optional logos: drop static/images/logo_uiuc.png & logo_cmu.png to show them -->
+      <div class="mt-5 flex items-center justify-center gap-8 opacity-80">
+        <img src="static/images/logo_uiuc.png" alt="UIUC" class="h-9 dark:invert dark:brightness-0 dark:opacity-90" onerror="this.style.display='none'" />
+        <img src="static/images/logo_cmu.png" alt="CMU" class="h-9 dark:invert dark:brightness-0 dark:opacity-90" onerror="this.style.display='none'" />
+      </div>
+      <p class="mt-4 text-xs text-slate-400">
+        <sup class="text-coral-brand">†</sup>Corresponding author &nbsp;·&nbsp; <sup class="text-coral-brand">*</sup>Equal advising
+      </p>
+
+      <!-- action buttons -->
+      <div class="mt-8 flex flex-wrap justify-center gap-3">
+        <a href="#" data-link="arxiv" class="group inline-flex items-center gap-2 rounded-full bg-ink text-white dark:bg-white dark:text-ink px-5 py-2.5 text-sm font-semibold shadow-sm hover:scale-[1.03] transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4a2 2 0 012-2h9l5 5v13a2 2 0 01-2 2H5a2 2 0 01-2-2V4z"/></svg>
+          Paper / arXiv
+        </a>
+        <a href="#" data-link="code" class="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+          Code
+        </a>
+        <a href="#" data-link="video" class="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+          Video
+        </a>
+        <a href="#bibtex" class="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/></svg>
+          BibTeX
+        </a>
+      </div>
+    </div>
+
+    <!-- hero teaser video slot -->
+    <div class="max-w-5xl mx-auto px-5 mt-12 reveal">
+      <div class="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 shadow-2xl">
+        <!-- TODO: replace this placeholder with the hero/supplementary video.
+             <video autoplay muted loop playsinline class="w-full"><source src="static/videos/teaser.mp4" type="video/mp4"></video> -->
+        <div class="video-placeholder relative aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/teaser.mp4">
+          <img src="static/images/teaser.png" alt="LUCID teaser" class="absolute inset-0 w-full h-full object-contain p-4 opacity-90" />
+          <div class="relative z-10 flex flex-col items-center gap-2 bg-white/80 dark:bg-ink/80 rounded-xl px-5 py-3 backdrop-blur">
+            <svg class="w-9 h-9 text-blue-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+            <span class="text-xs font-medium text-slate-500">Hero video slot — drop <code class="font-mono">static/videos/teaser.mp4</code></span>
+          </div>
+        </div>
+      </div>
+      <p class="text-center text-sm text-slate-500 mt-3">
+        We learn a manipulation intent model from human video and a tracking policy from simulation, and pair them in the real world on a dexterous hand and a parallel-jaw gripper.
+      </p>
+    </div>
+  </header>
+
+  <!-- ============ ABSTRACT ============ -->
+  <section id="abstract" class="py-16 sm:py-20">
+    <div class="max-w-3xl mx-auto px-5 reveal">
+      <h2 class="text-2xl font-bold tracking-tight mb-5 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-blue-brand"></span> Abstract
+      </h2>
+      <p class="text-lg leading-relaxed text-slate-700 dark:text-slate-300">
+        The most widely-adopted robot learning pipelines today learn skills from robot demonstrations or structured human data, which are expensive to collect and tied to specific embodiments. In contrast, unstructured human videos provide a scalable alternative. They contain diverse manipulation demonstrations across objects, scenes, and strategies, but are not directly connected to robot action. We propose <strong class="text-blue-brand">LUCID</strong>, a two-stage framework that learns task intent from unstructured human videos drawn from internet-scale datasets and learns robot control in massively-parallel simulation. The intent model predicts short-horizon intent (what should happen next in the scene) from the current observation in closed loop. An embodiment-specific tracking policy converts this intent into robot actions. The intent interface is shared across controllers, so the same intent model can be applied to different embodiments, from our primary dexterous hand to a parallel-jaw gripper. We evaluate LUCID on five real-world manipulation tasks: stirring, wiping, and binning supervised by only internet video, with zero-shot transfer to novel scenes and object instances; and push-T and cable routing supervised by 1&nbsp;hr each of self-collected smartphone video.
+      </p>
+    </div>
+  </section>
+
+  <!-- ============ KEY IDEAS ============ -->
+  <section class="pb-4">
+    <div class="max-w-5xl mx-auto px-5 grid sm:grid-cols-3 gap-5">
+      <div class="reveal rounded-xl border border-slate-200 dark:border-white/10 p-6">
+        <div class="text-blue-brand text-sm font-bold uppercase tracking-wider mb-2">Intent–control split</div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">An intent model trained on human video predicts <em>what should happen next</em>; a tracking policy trained in simulation handles <em>how the robot does it</em>.</p>
+      </div>
+      <div class="reveal rounded-xl border border-slate-200 dark:border-white/10 p-6">
+        <div class="text-sage-brand text-sm font-bold uppercase tracking-wider mb-2">Closed-loop intent</div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Intent is re-queried continually from the live scene rather than planned once, so the robot recovers when execution diverges.</p>
+      </div>
+      <div class="reveal rounded-xl border border-slate-200 dark:border-white/10 p-6">
+        <div class="text-coral-brand text-sm font-bold uppercase tracking-wider mb-2">Embodiment-agnostic</div>
+        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">The same intent interface drives both a dexterous hand and a parallel-jaw gripper, with no per-embodiment human data.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ STATS BAND ============ -->
+  <section class="py-10">
+    <div class="max-w-5xl mx-auto px-5 reveal">
+      <div class="grid grid-cols-2 md:grid-cols-4 gap-5 text-center">
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-blue-brand">73%</div>
+          <div class="text-xs sm:text-sm text-slate-500 mt-1">avg. success<br>(vs 28% open-loop)</div>
+        </div>
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-sage-brand">5</div>
+          <div class="text-xs sm:text-sm text-slate-500 mt-1">real-world<br>manipulation tasks</div>
+        </div>
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-coral-brand">2</div>
+          <div class="text-xs sm:text-sm text-slate-500 mt-1">embodiments,<br>one intent model</div>
+        </div>
+        <div>
+          <div class="text-3xl sm:text-4xl font-extrabold text-mustard-brand">0</div>
+          <div class="text-xs sm:text-sm text-slate-500 mt-1">robot or teleop<br>demonstrations</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ METHOD ============ -->
+  <section id="method" class="py-16 sm:py-20">
+    <div class="max-w-5xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-8 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-sage-brand"></span> Method
+      </h2>
+
+      <div class="reveal mb-12">
+        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
+          <img src="static/images/teaser.png" alt="LUCID overview" class="w-full" />
+        </figure>
+        <figcaption class="text-sm text-slate-500 mt-3 text-center">Two stages, paired at deployment: intent from human video (left), control from simulation (right), executed on real hardware (center).</figcaption>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-8 items-center reveal">
+        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
+          <img src="static/images/intent_model.png" alt="Intent model" class="w-full" />
+        </figure>
+        <div>
+          <h3 class="text-lg font-bold text-blue-brand mb-2">Stage 1 — Intent model</h3>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed text-[15px]">From a single RGB-D observation, the intent model predicts short-horizon object flow and a rough palm pose. It is embodiment-agnostic and trained purely on unstructured human video — no robot action labels, no object meshes, no motion capture.</p>
+        </div>
+      </div>
+
+      <div class="grid md:grid-cols-2 gap-8 items-center mt-12 reveal">
+        <div class="md:order-2">
+          <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
+            <img src="static/images/supervision.png" alt="Supervision pipeline" class="w-full" />
+          </figure>
+        </div>
+        <div class="md:order-1">
+          <h3 class="text-lg font-bold text-sage-brand mb-2">Stage 2 — Tracking policy</h3>
+          <p class="text-slate-600 dark:text-slate-400 leading-relaxed text-[15px]">A goal-conditioned policy trained once in massively-parallel simulation realizes the intent reference on a specific embodiment. We train a teacher on privileged state and distill a student that runs from onboard sensing, with domain randomization and a curriculum for robust sim-to-real transfer.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ RESULTS / VIDEO GRID ============ -->
+  <section id="results" class="py-16 sm:py-20 bg-slate-50 dark:bg-white/[.03]">
+    <div class="max-w-6xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-coral-brand"></span> Real-world rollouts
+      </h2>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Five tasks. Stirring, wiping, and binning are supervised by internet video only; push-T and cable routing by 1&nbsp;hr each of smartphone video.</p>
+
+      <div id="task-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+    </div>
+  </section>
+
+  <!-- ============ COMPARISON ============ -->
+  <section class="py-16 sm:py-20">
+    <div class="max-w-5xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-blue-brand"></span> Closed-loop vs. open-loop
+      </h2>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Closed-loop LUCID re-queries intent from the live scene and recovers from disturbances; an open-loop planner commits to a single plan at <span class="font-mono">t=0</span>.</p>
+
+      <div class="grid md:grid-cols-2 gap-6">
+        <div class="reveal">
+          <div class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/closed_loop.mp4">
+            <div class="text-center">
+              <span class="inline-block rounded-full bg-blue-brand text-white text-xs font-semibold px-3 py-1 mb-2">LUCID (closed-loop)</span>
+              <p class="text-xs text-slate-500 font-mono">static/videos/closed_loop.mp4</p>
+            </div>
+          </div>
+        </div>
+        <div class="reveal">
+          <div class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/open_loop.mp4">
+            <div class="text-center">
+              <span class="inline-block rounded-full bg-sage-brand text-white text-xs font-semibold px-3 py-1 mb-2">Open-loop planner</span>
+              <p class="text-xs text-slate-500 font-mono">static/videos/open_loop.mp4</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="reveal mt-10">
+        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white max-w-3xl mx-auto">
+          <img src="static/images/success_violins.png" alt="Success rates" class="w-full" />
+        </figure>
+        <figcaption class="text-sm text-slate-500 mt-3 text-center">Closed-loop LUCID reaches 73% average success on web-supervised tasks vs. 28% for the open-loop baseline; one intent model drives both embodiments at comparable success on the smartphone-collected tasks.</figcaption>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ GENERALIZATION ============ -->
+  <section id="generalization" class="py-16 sm:py-20 bg-slate-50 dark:bg-white/[.03]">
+    <div class="max-w-5xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-sage-brand"></span> Zero-shot generalization
+      </h2>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">The intent model is supervised on internet video and transfers zero-shot to <span class="text-blue-brand font-medium">novel scenes</span>, <span class="text-blue-brand font-medium">camera viewpoints</span>, and <span class="text-blue-brand font-medium">object instances</span> it never saw.</p>
+      <div class="reveal">
+        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
+          <img src="static/images/task_gallery.png" alt="Task gallery across scenes and objects" class="w-full" />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ SCALING ============ -->
+  <section id="scaling" class="py-16 sm:py-20">
+    <div class="max-w-5xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-mustard-brand"></span> Scaling with video
+      </h2>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Performance improves predictably with the amount of training video — both held-out intent loss and downstream real-world success.</p>
+      <div class="reveal">
+        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white max-w-3xl mx-auto p-4">
+          <img src="static/images/scaling.png" alt="Scaling curves" class="w-full" />
+        </figure>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ EMERGENT BEHAVIORS ============ -->
+  <section id="emergent" class="py-16 sm:py-20 bg-slate-50 dark:bg-white/[.03]">
+    <div class="max-w-5xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-lavender-brand"></span> Emergent behaviors
+      </h2>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Closed-loop intent yields behaviors we never explicitly supervised — recovering from slips, re-approaching, and composing sub-skills within a single rollout.</p>
+      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+        <div class="reveal rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/emergent_recovery.mp4">
+          <div class="text-center px-4"><span class="text-xs font-semibold text-slate-500 block mb-1">Disturbance recovery</span><span class="text-[11px] font-mono text-slate-400">static/videos/emergent_recovery.mp4</span></div>
+        </div>
+        <div class="reveal rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/emergent_reapproach.mp4">
+          <div class="text-center px-4"><span class="text-xs font-semibold text-slate-500 block mb-1">Re-approach</span><span class="text-[11px] font-mono text-slate-400">static/videos/emergent_reapproach.mp4</span></div>
+        </div>
+        <div class="reveal rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/emergent_compose.mp4">
+          <div class="text-center px-4"><span class="text-xs font-semibold text-slate-500 block mb-1">Task composition</span><span class="text-[11px] font-mono text-slate-400">static/videos/emergent_compose.mp4</span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ BIBTEX ============ -->
+  <section id="bibtex" class="py-16 sm:py-20">
+    <div class="max-w-4xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-6 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-lavender-brand"></span> BibTeX
+      </h2>
+      <div class="reveal relative">
+        <button id="copy-bib" class="absolute top-3 right-3 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-medium px-3 py-1.5 transition">Copy</button>
+        <pre class="rounded-xl bg-ink text-slate-200 p-5 overflow-x-auto text-[13px] leading-relaxed font-mono"><code id="bib-text">@article{gupta2026lucid,
+  title   = {LUCID: Learning Embodiment-Agnostic Intent Models from
+             Unstructured Human Videos for Scalable Dexterous Robot
+             Skill Acquisition},
+  author  = {Gupta, Harsh and Shi, Guanya and Yuan, Wenzhen},
+  journal = {arXiv preprint},
+  year    = {2026},
+}</code></pre>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ FOOTER ============ -->
+  <footer class="border-t border-slate-200 dark:border-white/10 py-10">
+    <div class="max-w-5xl mx-auto px-5 text-center text-sm text-slate-500">
+      <p class="mb-2">University of Illinois Urbana-Champaign &nbsp;·&nbsp; Carnegie Mellon University</p>
+      <p class="text-xs text-slate-400">Website template built for LUCID. Page content © the authors.</p>
+    </div>
+  </footer>
+
+  <script src="static/js/main.js"></script>
+</body>
+</html>
