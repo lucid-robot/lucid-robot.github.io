@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Work in progress</title>
+  <meta name="robots" content="noindex" />
+  <style>
+    :root { color-scheme: light dark; }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; }
+    body {
+      display: flex; align-items: center; justify-content: center;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, sans-serif;
+      background: #0d1117; color: #e6edf3;
+      text-align: center; padding: 2rem;
+    }
+    .dot {
+      width: 9px; height: 9px; border-radius: 50%;
+      background: #4A7BA6; display: inline-block;
+      margin-right: 9px; vertical-align: middle;
+      animation: pulse 1.8s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100% { opacity: .35; } 50% { opacity: 1; } }
+    h1 {
+      font-size: clamp(1.1rem, 3vw, 1.5rem);
+      font-weight: 600; letter-spacing: .02em;
+      color: #9aa7b4;
+    }
+  </style>
+</head>
+<body>
+  <h1><span class="dot"></span>Work in progress</h1>
+</body>
+</html>
