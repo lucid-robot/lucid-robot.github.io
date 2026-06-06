@@ -10,369 +10,727 @@
   <meta property="og:title" content="LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos" />
   <meta property="og:description" content="A two-stage framework: closed-loop intent from human video + a tracking policy from massively-parallel simulation, shared across embodiments." />
   <meta property="og:type" content="website" />
-  <meta property="og:image" content="static/images/teaser.png" />
+  <meta property="og:image" content="static/images/teaser.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:image" content="static/images/teaser.png" />
+  <meta name="twitter:image" content="static/images/teaser.jpg" />
 
-  <link rel="preconnect" href="https://fonts.googleapis.com" />
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <!-- favicons -->
+  <link rel="icon" type="image/png" sizes="32x32" href="static/images/favicon-32.png" />
+  <link rel="icon" type="image/png" sizes="256x256" href="static/images/favicon-256.png" />
+  <link rel="apple-touch-icon" href="static/images/apple-touch-icon.png" />
 
-  <script src="https://cdn.tailwindcss.com"></script>
-  <script>
-    tailwind.config = {
-      darkMode: 'class',
-      theme: {
-        extend: {
-          fontFamily: {
-            sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-            mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-          },
-          colors: {
-            // paper palette (y2r)
-            blue:     { brand: '#4A7BA6' },
-            sage:     { brand: '#7FB069' },
-            coral:    { brand: '#C97B7B' },
-            mustard:  { brand: '#E8B84A' },
-            lavender: { brand: '#9B7BB8' },
-            ink:      '#0d1117',
-          },
-        },
-      },
-    };
-  </script>
+  <!-- self-hosted fonts + compiled Tailwind (no external CDN, works offline) -->
+  <link rel="stylesheet" href="static/css/fonts.css" />
+  <link rel="stylesheet" href="static/css/style.css" />
 
   <style>
     html { -webkit-font-smoothing: antialiased; }
     /* scroll-reveal */
     .reveal { opacity: 0; transform: translateY(18px); transition: opacity .7s cubic-bezier(.16,1,.3,1), transform .7s cubic-bezier(.16,1,.3,1); }
     .reveal.in { opacity: 1; transform: none; }
-    /* subtle grain-free gradient mesh for hero */
+    /* subtle gradient mesh for hero */
     .mesh {
       background:
-        radial-gradient(60% 60% at 15% 10%, rgba(74,123,166,.18), transparent 60%),
-        radial-gradient(55% 55% at 85% 20%, rgba(155,123,184,.16), transparent 60%),
-        radial-gradient(50% 50% at 70% 90%, rgba(127,176,105,.14), transparent 60%);
+        radial-gradient(60% 60% at 15% 10%, rgba(74,123,166,.15), transparent 60%),
+        radial-gradient(55% 55% at 85% 20%, rgba(155,123,184,.13), transparent 60%),
+        radial-gradient(50% 50% at 70% 90%, rgba(127,176,105,.11), transparent 60%);
     }
     .video-placeholder {
       background-image:
         linear-gradient(135deg, rgba(127,127,127,.06) 25%, transparent 25%, transparent 50%, rgba(127,127,127,.06) 50%, rgba(127,127,127,.06) 75%, transparent 75%, transparent);
       background-size: 22px 22px;
     }
+    .failure-video-slot {
+      background-color: #f8fafc;
+      background-image:
+        linear-gradient(135deg, rgba(127,127,127,.055) 25%, transparent 25%, transparent 50%, rgba(127,127,127,.055) 50%, rgba(127,127,127,.055) 75%, transparent 75%, transparent),
+        radial-gradient(circle at 50% 38%, rgba(74,123,166,.10), transparent 42%);
+      background-size: 22px 22px, 100% 100%;
+    }
+    .failure-video-play {
+      position: relative; width: 42px; height: 42px; border-radius: 9999px;
+      background: #0d1117; box-shadow: 0 12px 28px -16px rgba(15,23,42,.65);
+    }
+    .failure-video-play::before {
+      content: ""; position: absolute; left: 17px; top: 13px;
+      width: 0; height: 0; border-top: 8px solid transparent; border-bottom: 8px solid transparent;
+      border-left: 12px solid #fff;
+    }
+    .failure-video-timeline {
+      position: absolute; left: 14px; right: 14px; bottom: 12px; height: 4px;
+      border-radius: 9999px; background: rgba(148,163,184,.32); overflow: hidden;
+    }
+    .failure-video-timeline::before {
+      content: ""; position: absolute; inset: 0 76% 0 0; border-radius: inherit;
+      background: #4A7BA6;
+    }
+    .lucid-player { position: relative; isolation: isolate; cursor: pointer; }
+    .lucid-player video {
+      position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 20;
+      opacity: 0; transition: opacity .18s ease;
+    }
+    .lucid-player.is-ready video { opacity: 1; }
+    .lucid-video-fallback {
+      transition: opacity .18s ease, visibility .18s ease;
+    }
+    .lucid-player.is-ready > .lucid-video-fallback {
+      opacity: 0; visibility: hidden; pointer-events: none;
+    }
+    .lucid-video-loading {
+      position: absolute; inset: 0; z-index: 31; display: grid; place-items: center;
+      background: rgba(248,250,252,.62); transition: opacity .18s ease, visibility .18s ease;
+    }
+    .lucid-player.is-ready .lucid-video-loading { opacity: 0; visibility: hidden; }
+    .lucid-video-loading::before {
+      content: ""; width: 22px; height: 22px; border-radius: 9999px;
+      border: 2px solid rgba(74,123,166,.22); border-top-color: #4A7BA6;
+      animation: lucidSpin .7s linear infinite;
+    }
+    @keyframes lucidSpin { to { transform: rotate(360deg); } }
+    .lucid-speed {
+      position: absolute; z-index: 42; top: 7px; right: 7px;
+      min-width: 34px; height: 22px; border: 1px solid rgba(15,23,42,.13);
+      border-radius: 9999px; background: rgba(255,255,255,.9);
+      color: #0d1117; font-size: 10px; font-weight: 800; line-height: 1;
+      display: inline-grid; place-items: center; cursor: pointer;
+      box-shadow: 0 8px 18px -14px rgba(15,23,42,.55);
+    }
+    .lucid-controls {
+      position: absolute; z-index: 41; left: 7px; right: 7px; bottom: 7px;
+      height: 28px; display: flex; align-items: center; gap: 6px; padding: 5px 7px;
+      border-radius: 10px; background: rgba(13,17,23,.76); color: #fff;
+      opacity: 0; transform: translateY(3px); pointer-events: none;
+      transition: opacity .16s ease, transform .16s ease;
+    }
+    .lucid-player:hover .lucid-controls,
+    .lucid-player:focus-within .lucid-controls,
+    .lucid-player.is-paused .lucid-controls,
+    .lucid-player.is-controls .lucid-controls,
+    .lucid-player:fullscreen .lucid-controls,
+    .lucid-player:-webkit-full-screen .lucid-controls {
+      opacity: 1; transform: translateY(0); pointer-events: auto;
+    }
+    .lucid-control-btn {
+      width: 20px; height: 20px; border: 0; border-radius: 7px;
+      display: grid; place-items: center; background: rgba(255,255,255,.10);
+      color: #fff; cursor: pointer; flex: 0 0 auto;
+    }
+    .lucid-control-btn:hover { background: rgba(255,255,255,.18); }
+    .lucid-control-btn svg { width: 12px; height: 12px; display: block; }
+    .lucid-scrub {
+      min-width: 0; flex: 1 1 auto; accent-color: #fff; cursor: pointer;
+      height: 14px;
+    }
+    .lucid-volume {
+      flex: 0 0 62px; width: 62px; min-width: 44px; accent-color: #fff;
+      cursor: pointer; height: 14px;
+    }
+    @media (max-width: 520px) {
+      .lucid-volume { flex-basis: 46px; width: 46px; min-width: 38px; }
+    }
+    @media (hover: none), (pointer: coarse) {
+      .lucid-player { -webkit-tap-highlight-color: transparent; }
+      .lucid-controls {
+        left: 6px; right: 6px; bottom: 6px; height: 34px;
+        gap: 7px; padding: 4px 7px; border-radius: 12px;
+      }
+      .lucid-control-btn { width: 28px; height: 28px; border-radius: 9px; }
+      .lucid-control-btn:hover { background: rgba(255,255,255,.10); }
+      .lucid-control-btn svg { width: 15px; height: 15px; }
+      .lucid-scrub, .lucid-volume { height: 22px; }
+      .lucid-volume { flex-basis: 56px; width: 56px; min-width: 48px; }
+      .lucid-speed { top: 6px; right: 6px; min-width: 38px; height: 28px; font-size: 11px; }
+      .carousel-arrow, .rollout-arrow { width: 40px; height: 40px; min-width: 40px; }
+    }
+    @media (hover: none), (pointer: coarse) and (max-width: 380px) {
+      .lucid-volume { flex-basis: 48px; width: 48px; min-width: 42px; }
+    }
+    .lucid-video-tag {
+      position: absolute; z-index: 32; left: 8px; top: 7px;
+      border-radius: 8px; background: rgba(13,17,23,.68); color: #fff;
+      font-size: 10px; font-weight: 700; line-height: 1; padding: 5px 7px;
+      pointer-events: none; opacity: 0; visibility: hidden;
+      transition: opacity .16s ease, visibility .16s ease;
+    }
+    .lucid-player.is-ready[data-video-label-visible="always"] .lucid-video-tag,
+    .lucid-player:fullscreen .lucid-video-tag,
+    .lucid-player:-webkit-full-screen .lucid-video-tag {
+      opacity: .95; visibility: visible;
+    }
+    .lucid-player:fullscreen,
+    .lucid-player:-webkit-full-screen {
+      background: #000; display: grid; place-items: center;
+    }
+    .lucid-player:fullscreen video,
+    .lucid-player:-webkit-full-screen video {
+      position: static; width: 100vw; height: 100vh; object-fit: contain;
+    }
+    .lucid-player:fullscreen:hover,
+    .lucid-player:-webkit-full-screen:hover {
+      transform: none; box-shadow: none;
+    }
+    .lucid-player:fullscreen .lucid-speed--inline,
+    .lucid-player:-webkit-full-screen .lucid-speed--inline {
+      position: static; inset: auto; min-width: 54px; height: 38px; flex: 0 0 auto;
+      border-radius: 12px; background: rgba(255,255,255,.12); color: #fff;
+      border-color: rgba(255,255,255,.18); box-shadow: none; font-size: 14px;
+    }
+    .lucid-player:fullscreen .lucid-controls,
+    .lucid-player:-webkit-full-screen .lucid-controls {
+      left: 50%; right: auto; bottom: 24px; width: min(47.5rem, calc(100vw - 3rem));
+      height: 56px; gap: 14px; padding: 9px 14px; border-radius: 16px;
+      background: rgba(13,17,23,.82); opacity: 1; pointer-events: auto;
+      transform: translateX(-50%) translateY(0);
+    }
+    .lucid-player:fullscreen .lucid-control-btn,
+    .lucid-player:-webkit-full-screen .lucid-control-btn {
+      width: 40px; height: 40px; border-radius: 12px;
+    }
+    .lucid-player:fullscreen .lucid-control-btn svg,
+    .lucid-player:-webkit-full-screen .lucid-control-btn svg {
+      width: 22px; height: 22px;
+    }
+    .lucid-player:fullscreen .lucid-scrub,
+    .lucid-player:-webkit-full-screen .lucid-scrub {
+      height: 28px;
+    }
+    .lucid-player:fullscreen .lucid-volume,
+    .lucid-player:-webkit-full-screen .lucid-volume {
+      flex-basis: 120px; width: 120px; height: 28px;
+    }
+    .lucid-player:fullscreen .lucid-video-tag,
+    .lucid-player:-webkit-full-screen .lucid-video-tag {
+      top: 20px; left: 20px; border-radius: 12px; font-size: 14px; padding: 9px 12px;
+    }
     ::selection { background: rgba(74,123,166,.25); }
+    /* justify long-form body copy */
+    section p { text-align: justify; text-justify: inter-word; hyphens: auto; }
+    @media (max-width: 767px) {
+      section h2.text-2xl { font-size: 21px !important; line-height: 1.18 !important; }
+      section h3.text-lg { font-size: 16px !important; line-height: 1.25 !important; }
+      section [class~="text-[15px]"] { font-size: 13.5px !important; line-height: 1.5 !important; }
+      section [class~="text-[12px]"] { font-size: 11.5px !important; line-height: 1.35 !important; }
+      .faq-q { font-size: 13.5px !important; }
+    }
+
+    /* tabs (method, embodiment) */
+    .tab-btn { padding: .45rem .95rem; border-radius: 9999px; font-size: .85rem; font-weight: 600;
+               border: 1px solid #e2e8f0; color: #475569; background: #fff; cursor: pointer; transition: all .15s; }
+    .tab-btn:hover { border-color: #94a3b8; }
+    .tab-btn.is-active { background: #0d1117; color: #fff; border-color: #0d1117; }
+    .hero-actions {
+      display: flex; flex-wrap: nowrap; justify-content: center; align-items: center;
+      gap: .45rem; margin: 1.5rem auto 0; max-width: calc(100vw - 1rem); white-space: nowrap;
+    }
+    .hero-action {
+      position: relative; display: inline-flex; align-items: center; justify-content: center; gap: .42rem;
+      min-width: 0; height: 42px; padding: 0 .86rem; border-radius: 14px;
+      border: 1px solid #cbd5e1; color: #0d1117; background: #fff;
+      font-size: 13px; line-height: 1; font-weight: 700;
+    }
+    .hero-action svg { width: 15px; height: 15px; flex: 0 0 auto; }
+    .hero-action__arxiv { display: block; width: 45px; height: auto; flex: 0 0 auto; }
+    .hero-action__youtube { display: block; width: 17px; height: auto; flex: 0 0 auto; }
+    .hero-action--primary {
+      color: #fff; background: #0d1117; border-color: #0d1117;
+      box-shadow: 0 1px 4px rgba(15,23,42,.14);
+    }
+    .hero-action:hover { transform: translateY(-1px); border-color: #64748b; }
+    .hero-action--primary:hover { border-color: #0d1117; }
+    .hero-action[aria-disabled="true"] { padding-top: 3px; padding-bottom: 11px; }
+    .hero-action [data-soon-badge] {
+      position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%);
+      margin: 0; font-size: 7px; line-height: 1; letter-spacing: .08em; opacity: .6;
+    }
+    .sticky-arxiv-logo { width: 22px; height: auto; display: block; }
+    .sticky-youtube-logo { width: 18px; height: auto; display: block; }
+    @media (max-width: 520px) {
+      .hero-actions { gap: .22rem; }
+      .hero-action { height: 38px; padding: 0 .43rem; gap: .24rem; border-radius: 11px; font-size: 12px; }
+      .hero-action[aria-disabled="true"] { padding-top: 2px; padding-bottom: 10px; }
+      .hero-action svg { width: 13px; height: 13px; }
+      .hero-action__arxiv { width: 38px; }
+      .hero-action__youtube { width: 15px; }
+      .hero-action [data-soon-badge] { bottom: 3px; font-size: 6.5px; letter-spacing: .06em; opacity: .56; }
+    }
+    @media (max-width: 370px) {
+      .hero-actions { gap: .16rem; }
+      .hero-action { padding: 0 .34rem; gap: .18rem; font-size: 11px; }
+      .hero-action[aria-disabled="true"] { padding-top: 2px; padding-bottom: 10px; }
+      .hero-action svg { width: 12px; height: 12px; }
+      .hero-action__arxiv { width: 34px; }
+      .hero-action__youtube { width: 14px; }
+    }
+    /* range slider */
+    input[type="range"].lucid-slider { -webkit-appearance: none; appearance: none; width: 100%;
+      height: 6px; border-radius: 9999px; outline: none; cursor: pointer;
+      background-color: #e2e8f0; background-repeat: no-repeat;
+      /* checkpoint guides at 2k / 5k / 20k (thumb radius is 11px, so ends inset by 11px) */
+      background-image:
+        radial-gradient(circle at 11px 50%, #94a3b8 0 2.5px, transparent 3px),
+        radial-gradient(circle at 50% 50%, #94a3b8 0 2.5px, transparent 3px),
+        radial-gradient(circle at calc(100% - 11px) 50%, #94a3b8 0 2.5px, transparent 3px); }
+    input[type="range"].lucid-slider::-webkit-slider-thumb { -webkit-appearance: none; appearance: none;
+      width: 22px; height: 22px; border-radius: 50%; background: #4A7BA6; border: 3px solid #fff;
+      box-shadow: 0 1px 5px rgba(0,0,0,.25); transition: transform .12s; }
+    input[type="range"].lucid-slider::-webkit-slider-thumb:hover { transform: scale(1.12); }
+    input[type="range"].lucid-slider:active::-webkit-slider-thumb { transform: scale(1.18); }
+    input[type="range"].lucid-slider::-moz-range-thumb { width: 22px; height: 22px; border-radius: 50%;
+      background: #4A7BA6; border: 3px solid #fff; box-shadow: 0 1px 5px rgba(0,0,0,.25); cursor: pointer; }
+    input[type="range"].lucid-slider::-moz-range-track { height: 6px; border-radius: 9999px;
+      background-color: #e2e8f0; background-repeat: no-repeat;
+      background-image:
+        radial-gradient(circle at 11px 50%, #94a3b8 0 2.5px, transparent 3px),
+        radial-gradient(circle at 50% 50%, #94a3b8 0 2.5px, transparent 3px),
+        radial-gradient(circle at calc(100% - 11px) 50%, #94a3b8 0 2.5px, transparent 3px); }
+    /* carousel arrows */
+    .carousel-arrow { width: 36px; height: 36px; border-radius: 9999px; border: 1px solid #cbd5e1;
+      background: #fff; color: #334155; font-size: 18px; line-height: 1; cursor: pointer; transition: all .15s; }
+    .carousel-arrow:hover:not(:disabled) { border-color: #334155; }
+    .carousel-arrow:disabled { cursor: default; }
+    /* rollout rows: 3-up on wide screens, 2-visible carousel on narrow screens */
+    .rollout-head { display: flex; align-items: center; justify-content: space-between; gap: .75rem; }
+    #rollout-grid > .reveal + .reveal { margin-top: 2.75rem; }
+    .rollout-controls { display: none; gap: .35rem; flex-shrink: 0; }
+    .rollout-arrow { width: 32px; height: 32px; border-radius: 9999px; border: 1px solid #cbd5e1;
+      background: #fff; color: #334155; font-size: 17px; line-height: 1; cursor: pointer; transition: all .15s; }
+    .rollout-arrow:hover:not(:disabled) { border-color: #334155; transform: translateY(-1px); }
+    .rollout-arrow:disabled { opacity: .35; cursor: default; transform: none; }
+    .rollout-viewport {
+      overflow-x: clip; overflow-y: visible;
+      padding-block: .75rem 1rem; margin-block: -.75rem -1rem;
+    }
+    .rollout-track { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: .5rem;
+      transition: transform .28s cubic-bezier(.16,1,.3,1); }
+    .rollout-card { min-width: 0; }
+    @media (min-width: 640px) {
+      .rollout-track { gap: .75rem; }
+    }
+    @media (max-width: 767px) {
+      #rollout-grid > .reveal + .reveal { margin-top: 2.25rem; }
+      .rollout-controls { display: flex; }
+      .rollout-track { display: flex; gap: .65rem; }
+      .rollout-card { flex: 0 0 calc((100% - .65rem) / 2); }
+    }
+    @media (max-width: 520px) {
+      .rollout-track { gap: .5rem; }
+      .rollout-card { flex-basis: calc((100% - .5rem) / 2); }
+      .rollout-arrow { width: 30px; height: 30px; }
+    }
+
+    /* ---- smoothness polish: animate only transform/opacity (GPU-composited) ---- */
+    [data-video], .fc-media { transition: transform .25s cubic-bezier(.16,1,.3,1), box-shadow .25s ease; }
+    [data-video]:hover, .fc-media:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -14px rgba(15,23,42,.35); }
+    a, button, summary, .tab-btn { transition: color .2s ease, background-color .2s ease, border-color .2s ease, opacity .2s ease, transform .2s ease; }
+    /* ---- method diagram: inline SVG, hover lights the matched elements ---- */
+    .method-svg { position: relative; }
+    .method-svg svg, .method-svg img { width: 100%; height: auto; display: block; }
+    .method-svg .mleaf { transition: filter .18s ease; }
+    .method-stage-intent__copy { min-width: 0; }
+    @media (max-width: 767px) {
+      .method-stage-intent { gap: .875rem; }
+      #emb-chart {
+        width: min(100%, clamp(18rem, 84vw, 20rem)) !important;
+        max-width: 20rem !important;
+      }
+      #scale-chart {
+        display: block;
+        width: min(100%, clamp(19.5rem, 84vw, 22rem)) !important;
+        max-width: 22rem !important;
+        margin-inline: auto;
+      }
+      #owc-chart {
+        display: block;
+        position: relative;
+        left: 50%;
+        width: min(calc(100vw - 1.25rem), clamp(21rem, 92vw, 24rem)) !important;
+        max-width: 24rem !important;
+        margin-inline: 0;
+        transform: translateX(-50%);
+      }
+    }
+    .method-hint {
+      position: absolute; top: var(--hint-y, 0); left: var(--hint-x, 50%); z-index: 6;
+      display: inline-flex; align-items: center; gap: 7px;
+      height: 32px; padding: 4px 11px 4px 5px; border-radius: 9999px;
+      background: rgba(255,255,255,.94); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px);
+      color: #334155; border: 1px solid rgba(15,23,42,.10);
+      box-shadow: 0 1px 1px rgba(15,23,42,.04), 0 10px 22px -12px rgba(15,23,42,.40);
+      pointer-events: none; white-space: nowrap;
+      transform: translate(-50%, -120%);
+      transition: opacity .28s ease, transform .28s ease;
+      animation: methodHintHop 1.85s cubic-bezier(.34,1.56,.64,1) infinite;
+    }
+    .method-hint::before {
+      content: ""; position: absolute; left: 50%; bottom: -12px;
+      width: 14px; height: 14px; border-radius: 9999px;
+      border: 2px solid rgba(107,143,94,.45);
+      transform: translateX(-50%) scale(.55);
+      animation: methodHintPing 1.85s ease-out infinite;
+    }
+    .method-hint::after {
+      content: ""; position: absolute; left: 50%; bottom: -5px;
+      width: 8px; height: 8px; background: rgba(255,255,255,.94);
+      border-right: 1px solid rgba(15,23,42,.10); border-bottom: 1px solid rgba(15,23,42,.10);
+      transform: translateX(-50%) rotate(45deg);
+    }
+    .method-hint__icon {
+      display: grid; place-items: center; width: 24px; height: 24px; border-radius: 9999px;
+      background: #0d1117; color: #fff; box-shadow: inset 0 0 0 1px rgba(255,255,255,.08);
+    }
+    .method-hint__icon svg { width: 14px; height: 14px; animation: methodCursorTap 1.85s ease-in-out infinite; }
+    .method-hint__text {
+      font-size: 11.5px; line-height: 1; font-weight: 700; letter-spacing: 0;
+      color: #334155;
+    }
+    .method-hint.gone {
+      opacity: 0; transform: translate(-50%, -104%) scale(.92); animation: none;
+    }
+    .method-hint.popout {
+      animation: methodHintOut .34s cubic-bezier(.16,1,.3,1) forwards;
+    }
+    .method-hint.popout::before {
+      animation: methodHintPopPing .34s ease-out forwards;
+    }
+    .method-hint.gone::before, .method-hint.gone .method-hint__icon svg,
+    .method-hint.popout .method-hint__icon svg { animation: none; }
+    @keyframes methodHintHop {
+      0%, 100% { transform: translate(-50%, -120%) rotate(-1deg); }
+      42% { transform: translate(-50%, -138%) rotate(1deg); }
+      58% { transform: translate(-50%, -114%) rotate(0deg); }
+    }
+    @keyframes methodHintPing {
+      0%, 55% { opacity: 0; transform: translateX(-50%) scale(.55); }
+      58% { opacity: .75; transform: translateX(-50%) scale(.55); }
+      100% { opacity: 0; transform: translateX(-50%) scale(1.65); }
+    }
+    @keyframes methodCursorTap {
+      0%, 38%, 100% { transform: translate(0, 0) rotate(0deg); }
+      52% { transform: translate(2px, 3px) rotate(-8deg); }
+      62% { transform: translate(0, 0) rotate(0deg); }
+    }
+    @keyframes methodHintOut {
+      0% { opacity: 1; transform: translate(-50%, -120%) scale(1); }
+      48% { opacity: 1; transform: translate(-50%, -132%) scale(1.08); }
+      100% { opacity: 0; transform: translate(-50%, -104%) scale(.86); }
+    }
+    @keyframes methodHintPopPing {
+      0% { opacity: .75; transform: translateX(-50%) scale(.55); }
+      100% { opacity: 0; transform: translateX(-50%) scale(2.1); }
+    }
+    @media (prefers-reduced-motion: reduce) {
+      .method-hint, .method-hint::before, .method-hint__icon svg { animation: none; }
+    }
+    .mhot2 { position: absolute; z-index: 5; cursor: pointer; }
+
+    /* respect users who prefer less motion */
+    @media (prefers-reduced-motion: reduce) {
+      *, *::before, *::after { transition-duration: 1ms !important; animation-duration: 1ms !important; scroll-behavior: auto !important; }
+      .reveal { opacity: 1 !important; transform: none !important; }
+    }
+
+    /* ---- scroll-triggered sticky bar (hidden until you scroll past the hero) ---- */
+    #sticky-bar {
+      transform: translateY(-100%);
+      opacity: 0;
+      transition: transform .35s ease, opacity .35s ease;
+      pointer-events: none;
+    }
+    #sticky-bar.visible {
+      transform: translateY(0);
+      opacity: 1;
+      pointer-events: auto;
+    }
   </style>
 </head>
 
-<body class="bg-white text-ink dark:bg-ink dark:text-slate-100 font-sans antialiased">
+<body class="bg-white text-ink font-sans antialiased">
 
-  <!-- ============ NAV ============ -->
-  <nav class="fixed top-0 inset-x-0 z-50 backdrop-blur-md bg-white/70 dark:bg-ink/70 border-b border-slate-200/60 dark:border-white/10">
-    <div class="max-w-6xl mx-auto px-5 h-14 flex items-center justify-between">
-      <a href="#top" class="font-extrabold tracking-tight text-lg">
-        <span class="text-blue-brand">LU</span><span class="text-sage-brand">CI</span><span class="text-coral-brand">D</span>
+  <!-- ============ SCROLL-TRIGGERED STICKY BAR ============ -->
+  <div id="sticky-bar" class="fixed top-0 inset-x-0 z-50 bg-white/90 backdrop-blur-md border-b border-slate-200 shadow-sm">
+    <div class="max-w-5xl mx-auto px-5 h-12 flex items-center justify-between gap-4">
+      <a href="#top" class="min-w-0 flex items-center gap-2 text-[13px] sm:text-sm text-slate-600">
+        <img src="static/images/favicon-32.png" alt="" class="w-6 h-6 rounded-md flex-shrink-0" />
+        <span class="truncate">
+          <strong class="font-semibold text-ink">LUCID</strong>
+          <span class="text-slate-300 mx-1.5">·</span>
+          <span class="text-slate-500">H. Gupta, G. Shi, W. Yuan</span>
+        </span>
       </a>
-      <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600 dark:text-slate-300">
-        <a href="#abstract" class="hover:text-blue-brand transition">Abstract</a>
-        <a href="#method" class="hover:text-blue-brand transition">Method</a>
-        <a href="#results" class="hover:text-blue-brand transition">Results</a>
-        <a href="#generalization" class="hover:text-blue-brand transition">Generalization</a>
-        <a href="#scaling" class="hover:text-blue-brand transition">Scaling</a>
-        <a href="#bibtex" class="hover:text-blue-brand transition">BibTeX</a>
+      <div class="flex items-center gap-1.5 flex-shrink-0">
+        <a href="#" data-link="paper" title="Paper" aria-label="Paper" class="grid place-items-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:text-ink hover:border-slate-400 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4a2 2 0 012-2h9l5 5v13a2 2 0 01-2 2H5a2 2 0 01-2-2V4z"/></svg>
+        </a>
+        <a href="#" data-link="arxiv" title="arXiv" aria-label="arXiv" class="grid place-items-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:text-ink hover:border-slate-400 transition">
+          <img src="static/images/logo_arxiv.svg" alt="" class="sticky-arxiv-logo" />
+        </a>
+        <a href="#" data-link="code" title="Code" aria-label="Code" class="grid place-items-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:text-ink hover:border-slate-400 transition">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577v-2.234c-3.338.725-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.775.419-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.468-2.381 1.235-3.221-.123-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23a11.49 11.49 0 0 1 3.003-.404c1.018.004 2.044.137 3.003.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.119 3.176.77.84 1.233 1.911 1.233 3.221 0 4.609-2.807 5.626-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.696.825.577C20.565 22.092 24 17.596 24 12.297c0-6.627-5.373-12-12-12Z"/></svg>
+        </a>
+        <a href="#" data-link="video" title="Video" aria-label="Video" class="grid place-items-center w-8 h-8 rounded-lg border border-slate-200 text-slate-500 hover:text-ink hover:border-slate-400 transition">
+          <img src="static/images/logo_youtube.svg" alt="" class="sticky-youtube-logo" />
+        </a>
       </div>
-      <button id="theme-toggle" aria-label="Toggle dark mode"
-        class="rounded-lg p-2 text-slate-500 hover:bg-slate-100 dark:hover:bg-white/10 transition">
-        <svg class="w-5 h-5 hidden dark:block" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v2m0 14v2m9-9h-2M5 12H3m15.36 6.36l-1.42-1.42M7.05 7.05L5.64 5.64m12.72 0l-1.42 1.42M7.05 16.95l-1.41 1.41M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
-        <svg class="w-5 h-5 block dark:hidden" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-      </button>
     </div>
-  </nav>
+  </div>
 
   <!-- ============ HERO ============ -->
-  <header id="top" class="relative pt-28 pb-14 mesh">
+  <header id="top" class="relative pt-10 pb-12 bg-white">
     <div class="max-w-4xl mx-auto px-5 text-center">
-      <p class="text-sm font-semibold tracking-widest uppercase text-blue-brand mb-4">Embodiment-Agnostic Manipulation</p>
-      <h1 class="text-3xl sm:text-4xl md:text-5xl font-extrabold tracking-tight leading-tight">
-        <span class="text-blue-brand">LUCID</span>: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos for Scalable Dexterous Robot Skill Acquisition
-      </h1>
+      <h1 class="sr-only">LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos for Scalable Dexterous Robot Skill Acquisition</h1>
+      <img src="static/images/lucid_wordmark.png" alt="LUCID" class="mx-auto w-full max-w-sm" />
+      <p class="mt-3 text-lg sm:text-xl font-normal leading-snug text-slate-600 max-w-2xl mx-auto">
+        Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos for Scalable Dexterous Robot Skill Acquisition
+      </p>
 
       <!-- authors -->
-      <div class="mt-7 flex flex-wrap justify-center gap-x-6 gap-y-2 text-base sm:text-lg font-medium">
-        <a href="#" class="hover:text-blue-brand transition">Harsh Gupta<sup class="text-coral-brand">†</sup></a>
-        <a href="#" class="hover:text-blue-brand transition">Guanya Shi<sup class="text-coral-brand">*</sup></a>
-        <a href="#" class="hover:text-blue-brand transition">Wenzhen Yuan<sup class="text-coral-brand">*</sup></a>
+      <div class="mt-5 flex flex-wrap justify-center gap-x-6 gap-y-2 text-base sm:text-lg">
+        <span><a href="https://hgupt3.github.io/" target="_blank" rel="noopener" class="font-medium underline decoration-slate-300 underline-offset-4 hover:decoration-blue-brand hover:text-blue-brand transition">Harsh Gupta</a><sup class="text-slate-400 ml-0.5">1,†</sup></span>
+        <span><a href="https://www.gshi.me/" target="_blank" rel="noopener" class="font-medium underline decoration-slate-300 underline-offset-4 hover:decoration-blue-brand hover:text-blue-brand transition">Guanya Shi</a><sup class="text-slate-400 ml-0.5">2,*</sup></span>
+        <span><a href="https://siebelschool.illinois.edu/about/people/all-faculty/yuanwz" target="_blank" rel="noopener" class="font-medium underline decoration-slate-300 underline-offset-4 hover:decoration-blue-brand hover:text-blue-brand transition">Wenzhen Yuan</a><sup class="text-slate-400 ml-0.5">1,*</sup></span>
       </div>
-      <div class="mt-3 flex flex-wrap justify-center gap-x-5 gap-y-1 text-sm text-slate-500 dark:text-slate-400">
-        <span>University of Illinois Urbana-Champaign</span>
-        <span>Carnegie Mellon University</span>
+
+      <!-- affiliations: numbered + university logos -->
+      <div class="mt-4 flex flex-wrap items-center justify-center gap-x-8 gap-y-3">
+        <a href="https://illinois.edu/" target="_blank" rel="noopener" class="group inline-flex items-center gap-2" title="University of Illinois Urbana-Champaign">
+          <sup class="text-slate-400 text-sm">1</sup>
+          <img src="static/images/logo_uiuc.svg" alt="University of Illinois Urbana-Champaign" class="h-5 sm:h-6 transition group-hover:opacity-80" />
+        </a>
+        <a href="https://www.cmu.edu/" target="_blank" rel="noopener" class="group inline-flex items-center gap-2" title="Carnegie Mellon University">
+          <sup class="text-slate-400 text-sm">2</sup>
+          <img src="static/images/logo_cmu.svg" alt="Carnegie Mellon University" class="h-4 sm:h-[18px] transition group-hover:opacity-80" />
+        </a>
       </div>
-      <!-- optional logos: drop static/images/logo_uiuc.png & logo_cmu.png to show them -->
-      <div class="mt-5 flex items-center justify-center gap-8 opacity-80">
-        <img src="static/images/logo_uiuc.png" alt="UIUC" class="h-9 dark:invert dark:brightness-0 dark:opacity-90" onerror="this.style.display='none'" />
-        <img src="static/images/logo_cmu.png" alt="CMU" class="h-9 dark:invert dark:brightness-0 dark:opacity-90" onerror="this.style.display='none'" />
-      </div>
-      <p class="mt-4 text-xs text-slate-400">
-        <sup class="text-coral-brand">†</sup>Corresponding author &nbsp;·&nbsp; <sup class="text-coral-brand">*</sup>Equal advising
+      <p class="mt-3 text-xs text-slate-400">
+        <sup>†</sup>Corresponding author &nbsp;·&nbsp; <sup>*</sup>Equal advising
       </p>
 
       <!-- action buttons -->
-      <div class="mt-8 flex flex-wrap justify-center gap-3">
-        <a href="#" data-link="arxiv" class="group inline-flex items-center gap-2 rounded-full bg-ink text-white dark:bg-white dark:text-ink px-5 py-2.5 text-sm font-semibold shadow-sm hover:scale-[1.03] transition">
+      <div class="hero-actions">
+        <a href="#" data-link="paper" class="hero-action hero-action--primary">
           <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M3 4a2 2 0 012-2h9l5 5v13a2 2 0 01-2 2H5a2 2 0 01-2-2V4z"/></svg>
-          Paper / arXiv
+          Paper
         </a>
-        <a href="#" data-link="code" class="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M9.4 16.6L4.8 12l4.6-4.6L8 6l-6 6 6 6 1.4-1.4zm5.2 0L19.2 12l-4.6-4.6L16 6l6 6-6 6-1.4-1.4z"/></svg>
+        <a href="#" data-link="arxiv" class="hero-action">
+          <img src="static/images/logo_arxiv.svg" alt="" class="hero-action__arxiv" />
+          <span class="sr-only">arXiv</span>
+        </a>
+        <a href="#" data-link="code" class="hero-action">
+          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M12 .297c-6.63 0-12 5.373-12 12 0 5.303 3.438 9.8 8.205 11.387.6.113.82-.258.82-.577v-2.234c-3.338.725-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.84 1.237 1.84 1.237 1.07 1.835 2.807 1.305 3.492.998.108-.775.419-1.305.762-1.605-2.665-.3-5.466-1.332-5.466-5.93 0-1.31.468-2.381 1.235-3.221-.123-.303-.535-1.523.117-3.176 0 0 1.008-.322 3.301 1.23a11.49 11.49 0 0 1 3.003-.404c1.018.004 2.044.137 3.003.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.873.119 3.176.77.84 1.233 1.911 1.233 3.221 0 4.609-2.807 5.626-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .322.216.696.825.577C20.565 22.092 24 17.596 24 12.297c0-6.627-5.373-12-12-12Z"/></svg>
           Code
         </a>
-        <a href="#" data-link="video" class="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
+        <a href="#" data-link="video" class="hero-action">
+          <img src="static/images/logo_youtube.svg" alt="" class="hero-action__youtube" />
           Video
-        </a>
-        <a href="#bibtex" class="inline-flex items-center gap-2 rounded-full border border-slate-300 dark:border-white/15 px-5 py-2.5 text-sm font-semibold hover:bg-slate-50 dark:hover:bg-white/5 transition">
-          <svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h10"/></svg>
-          BibTeX
         </a>
       </div>
     </div>
 
+    <!-- separator before the media (also the trigger point for the sticky bar) -->
+    <div id="hero-divider" class="max-w-5xl mx-auto px-5 mt-12">
+      <hr class="border-0 h-px bg-slate-200" />
+    </div>
+
     <!-- hero teaser video slot -->
-    <div class="max-w-5xl mx-auto px-5 mt-12 reveal">
-      <div class="rounded-2xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 shadow-2xl">
-        <!-- TODO: replace this placeholder with the hero/supplementary video.
-             <video autoplay muted loop playsinline class="w-full"><source src="static/videos/teaser.mp4" type="video/mp4"></video> -->
-        <div class="video-placeholder relative aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/teaser.mp4">
-          <img src="static/images/teaser.png" alt="LUCID teaser" class="absolute inset-0 w-full h-full object-contain p-4 opacity-90" />
-          <div class="relative z-10 flex flex-col items-center gap-2 bg-white/80 dark:bg-ink/80 rounded-xl px-5 py-3 backdrop-blur">
+    <div class="max-w-5xl mx-auto px-5 mt-10 reveal">
+      <div class="rounded-2xl overflow-hidden shadow-2xl">
+        <div class="video-placeholder relative aspect-video flex items-center justify-center bg-slate-100" data-video="static/videos/teaser.mp4?v=20260605-hero-optimized-1" data-video-speed="1" data-video-speed-control="false" data-video-audio="true" data-video-loop="false" data-video-volume="0.7">
+          <img src="static/images/teaser.jpg" alt="LUCID teaser" class="absolute inset-0 w-full h-full object-contain p-4 opacity-90" />
+          <div class="relative z-10 flex flex-col items-center gap-2 bg-white/80 rounded-xl px-5 py-3 backdrop-blur">
             <svg class="w-9 h-9 text-blue-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
-            <span class="text-xs font-medium text-slate-500">Hero video slot — drop <code class="font-mono">static/videos/teaser.mp4</code></span>
+            <span class="text-xs font-medium text-slate-500">LUCID teaser</span>
           </div>
         </div>
       </div>
-      <p class="text-center text-sm text-slate-500 mt-3">
-        We learn a manipulation intent model from human video and a tracking policy from simulation, and pair them in the real world on a dexterous hand and a parallel-jaw gripper.
-      </p>
     </div>
   </header>
 
   <!-- ============ ABSTRACT ============ -->
-  <section id="abstract" class="py-16 sm:py-20">
+  <section id="abstract" class="py-12 sm:py-14">
     <div class="max-w-3xl mx-auto px-5 reveal">
       <h2 class="text-2xl font-bold tracking-tight mb-5 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-blue-brand"></span> Abstract
       </h2>
-      <p class="text-lg leading-relaxed text-slate-700 dark:text-slate-300">
-        The most widely-adopted robot learning pipelines today learn skills from robot demonstrations or structured human data, which are expensive to collect and tied to specific embodiments. In contrast, unstructured human videos provide a scalable alternative. They contain diverse manipulation demonstrations across objects, scenes, and strategies, but are not directly connected to robot action. We propose <strong class="text-blue-brand">LUCID</strong>, a two-stage framework that learns task intent from unstructured human videos drawn from internet-scale datasets and learns robot control in massively-parallel simulation. The intent model predicts short-horizon intent (what should happen next in the scene) from the current observation in closed loop. An embodiment-specific tracking policy converts this intent into robot actions. The intent interface is shared across controllers, so the same intent model can be applied to different embodiments, from our primary dexterous hand to a parallel-jaw gripper. We evaluate LUCID on five real-world manipulation tasks: stirring, wiping, and binning supervised by only internet video, with zero-shot transfer to novel scenes and object instances; and push-T and cable routing supervised by 1&nbsp;hr each of self-collected smartphone video.
+      <p class="text-[15px] leading-relaxed text-slate-700">
+        The most widely-adopted robot learning pipelines today learn skills from robot demonstrations or structured human data, which are expensive to collect and tied to specific embodiments. In contrast, unstructured human videos provide a scalable alternative. They contain diverse manipulation demonstrations across objects, scenes, and strategies, but are not directly connected to robot action. We propose LUCID, a two-stage framework that learns task intent from unstructured human videos drawn from internet-scale datasets and learns robot control in massively-parallel simulation. The intent model predicts short-horizon intent (what should happen next in the scene) from the current observation in closed loop. An embodiment-specific tracking policy converts this intent into robot actions. The intent interface is shared across controllers, so the same intent model can be applied to different embodiments, from our primary dexterous hand to a parallel-jaw gripper. We evaluate LUCID on five real-world manipulation tasks. Stirring, wiping, and binning are supervised by only internet video, with zero-shot transfer to novel scenes and object instances; push-T and cable routing are supervised by 1&nbsp;hr each of self-collected smartphone video.
       </p>
     </div>
   </section>
 
-  <!-- ============ KEY IDEAS ============ -->
-  <section class="pb-4">
-    <div class="max-w-5xl mx-auto px-5 grid sm:grid-cols-3 gap-5">
-      <div class="reveal rounded-xl border border-slate-200 dark:border-white/10 p-6">
-        <div class="text-blue-brand text-sm font-bold uppercase tracking-wider mb-2">Intent–control split</div>
-        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">An intent model trained on human video predicts <em>what should happen next</em>; a tracking policy trained in simulation handles <em>how the robot does it</em>.</p>
-      </div>
-      <div class="reveal rounded-xl border border-slate-200 dark:border-white/10 p-6">
-        <div class="text-sage-brand text-sm font-bold uppercase tracking-wider mb-2">Closed-loop intent</div>
-        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">Intent is re-queried continually from the live scene rather than planned once, so the robot recovers when execution diverges.</p>
-      </div>
-      <div class="reveal rounded-xl border border-slate-200 dark:border-white/10 p-6">
-        <div class="text-coral-brand text-sm font-bold uppercase tracking-wider mb-2">Embodiment-agnostic</div>
-        <p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed">The same intent interface drives both a dexterous hand and a parallel-jaw gripper, with no per-embodiment human data.</p>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ STATS BAND ============ -->
-  <section class="py-10">
-    <div class="max-w-5xl mx-auto px-5 reveal">
-      <div class="grid grid-cols-2 md:grid-cols-4 gap-5 text-center">
-        <div>
-          <div class="text-3xl sm:text-4xl font-extrabold text-blue-brand">73%</div>
-          <div class="text-xs sm:text-sm text-slate-500 mt-1">avg. success<br>(vs 28% open-loop)</div>
-        </div>
-        <div>
-          <div class="text-3xl sm:text-4xl font-extrabold text-sage-brand">5</div>
-          <div class="text-xs sm:text-sm text-slate-500 mt-1">real-world<br>manipulation tasks</div>
-        </div>
-        <div>
-          <div class="text-3xl sm:text-4xl font-extrabold text-coral-brand">2</div>
-          <div class="text-xs sm:text-sm text-slate-500 mt-1">embodiments,<br>one intent model</div>
-        </div>
-        <div>
-          <div class="text-3xl sm:text-4xl font-extrabold text-mustard-brand">0</div>
-          <div class="text-xs sm:text-sm text-slate-500 mt-1">robot or teleop<br>demonstrations</div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ METHOD ============ -->
-  <section id="method" class="py-16 sm:py-20">
+  <!-- ============ METHOD (two stages, no tabs) ============ -->
+  <section id="method" class="py-12 sm:py-14">
     <div class="max-w-5xl mx-auto px-5">
-      <h2 class="reveal text-2xl font-bold tracking-tight mb-8 flex items-center gap-3">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-3 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-sage-brand"></span> Method
       </h2>
+      <p class="reveal text-slate-500 mb-5 text-[15px]">
+        LUCID splits the problem in two. A robot-agnostic <span class="text-blue-brand font-medium">intent model</span>, learned from unstructured human video, predicts what should happen next in the scene. An embodiment-specific <span class="text-sage-brand font-medium">tracking policy</span>, learned in massively-parallel simulation, works out how a particular robot makes that happen. They meet at one short-horizon reference, object flow (where points on the object should move over the next second) plus a rough palm pose, and that is all that crosses between them.
+      </p>
+      <div class="h-px w-full mb-9" style="background-color: rgba(226, 232, 240, 0.8);" aria-hidden="true"></div>
 
-      <div class="reveal mb-12">
-        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
-          <img src="static/images/teaser.png" alt="LUCID overview" class="w-full" />
+      <!-- Stage 1 — intent: image left, text right -->
+      <div class="method-stage-intent grid grid-cols-2 gap-4 md:gap-8 items-center reveal mb-8">
+        <figure class="method-stage-intent__figure flex justify-center">
+          <div class="method-svg w-full mx-auto" data-key="method_intent.svg" style="max-width:23.4375rem">
+            <img src="static/images/method_intent.svg" alt="Intent model" class="w-full block" />
+          </div>
         </figure>
-        <figcaption class="text-sm text-slate-500 mt-3 text-center">Two stages, paired at deployment: intent from human video (left), control from simulation (right), executed on real hardware (center).</figcaption>
+        <div class="method-stage-intent__copy">
+          <div class="method-stage-intent__label text-xs font-bold uppercase tracking-wider text-blue-brand mb-1">Stage 1</div>
+          <h3 class="method-stage-intent__title text-lg font-bold mb-2">Intent from human video</h3>
+          <p class="method-stage-intent__body text-slate-600 leading-relaxed text-[15px]">From a single RGB-D (color and depth) observation, the intent model predicts the next second of the task. It outputs object flow, meaning where points on the object should move, plus a rough palm pose for the hand. That is what we mean by intent, what should happen next in the scene rather than which joints to move. It is embodiment-agnostic and trained purely on unstructured human video, with no action labels, object meshes, or motion capture, and it re-queries the live scene in closed loop at deploy, so it corrects course instead of committing to a plan.</p>
+        </div>
       </div>
+      <div class="h-px w-full mb-8" style="background-color: rgba(226, 232, 240, 0.8);" aria-hidden="true"></div>
 
-      <div class="grid md:grid-cols-2 gap-8 items-center reveal">
-        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
-          <img src="static/images/intent_model.png" alt="Intent model" class="w-full" />
+      <!-- Stage 2 — tracking: wide image on top, text below -->
+      <div class="reveal">
+        <div class="text-xs font-bold uppercase tracking-wider text-sage-brand mb-1">Stage 2</div>
+        <h3 class="text-lg font-bold mb-3">Control from simulation</h3>
+        <figure class="mb-4">
+          <div class="method-svg w-full" data-key="method_tracking.svg">
+            <img src="static/images/method_tracking.svg" alt="Tracking policy" class="w-full block" />
+          </div>
         </figure>
-        <div>
-          <h3 class="text-lg font-bold text-blue-brand mb-2">Stage 1 — Intent model</h3>
-          <p class="text-slate-600 dark:text-slate-400 leading-relaxed text-[15px]">From a single RGB-D observation, the intent model predicts short-horizon object flow and a rough palm pose. It is embodiment-agnostic and trained purely on unstructured human video — no robot action labels, no object meshes, no motion capture.</p>
-        </div>
-      </div>
-
-      <div class="grid md:grid-cols-2 gap-8 items-center mt-12 reveal">
-        <div class="md:order-2">
-          <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
-            <img src="static/images/supervision.png" alt="Supervision pipeline" class="w-full" />
-          </figure>
-        </div>
-        <div class="md:order-1">
-          <h3 class="text-lg font-bold text-sage-brand mb-2">Stage 2 — Tracking policy</h3>
-          <p class="text-slate-600 dark:text-slate-400 leading-relaxed text-[15px]">A goal-conditioned policy trained once in massively-parallel simulation realizes the intent reference on a specific embodiment. We train a teacher on privileged state and distill a student that runs from onboard sensing, with domain randomization and a curriculum for robust sim-to-real transfer.</p>
-        </div>
+        <p class="text-slate-600 leading-relaxed text-[15px] max-w-4xl">A goal-conditioned policy, trained once in massively-parallel simulation, turns the intent reference into joint commands for a specific robot. We first train a teacher with reinforcement learning on privileged simulator state, including object flow over surfaces an external camera cannot see, then distill it into a student that runs from onboard cameras alone. Heavy domain randomization and a difficulty curriculum carry it to the real robot, and the same recipe, re-trained against the same intent interface, drives a parallel-jaw gripper.</p>
       </div>
     </div>
   </section>
 
-  <!-- ============ RESULTS / VIDEO GRID ============ -->
-  <section id="results" class="py-16 sm:py-20 bg-slate-50 dark:bg-white/[.03]">
-    <div class="max-w-6xl mx-auto px-5">
+  <!-- ============ REAL-WORLD ROLLOUTS (3 web tasks x 3 scenarios) ============ -->
+  <section id="results" class="py-12 sm:py-14 bg-slate-50">
+    <div class="max-w-5xl mx-auto px-5">
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-coral-brand"></span> Real-world rollouts
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">Five tasks. Stirring, wiping, and binning are supervised by internet video only; push-T and cable routing by 1&nbsp;hr each of smartphone video.</p>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Three tasks supervised by internet video alone, roughly 20k clips each, mined by action label, never a robot demonstration. Each runs across three scenarios that jointly vary the <span class="text-blue-brand font-medium">scene</span>, the <span class="text-blue-brand font-medium">camera viewpoint</span>, and the <span class="text-blue-brand font-medium">object instances</span>; none were seen in training, so every rollout here is zero-shot for the intent model.</p>
 
-      <div id="task-grid" class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5"></div>
+      <div id="rollout-grid" class="space-y-7"></div>
     </div>
   </section>
 
-  <!-- ============ COMPARISON ============ -->
-  <section class="py-16 sm:py-20">
+  <!-- ============ EMBODIMENT TRANSFER (interactive violins + 2x2 videos) ============ -->
+  <section id="embodiment" class="py-12 sm:py-14">
+    <div class="max-w-5xl mx-auto px-5">
+      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
+        <span class="h-6 w-1.5 rounded bg-coral-brand"></span> One intent model, two embodiments
+      </h2>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Intent is only object flow plus a palm pose, and it never mentions fingers, so nothing about it is tied to one robot. Here the same intent model drives a <span class="text-blue-brand font-medium">dexterous hand</span> and a <span class="text-coral-brand font-medium">parallel-jaw gripper</span> on push-T and cable routing (1&nbsp;hr of smartphone video each). The two reach identical aggregate success (19/30) despite completely different hardware, since only the tracking policy was swapped. <span class="text-slate-400">Hover a violin for the per-task split.</span></p>
+
+      <div class="reveal">
+        <div class="space-y-6 mb-10">
+          <div>
+            <div class="text-sm font-bold text-ink mb-3">Push-T</div>
+            <div class="grid grid-cols-2 gap-4">
+              <figure>
+                <div class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative" data-video="static/videos/pusht_hand.mp4" data-video-label="Push-T · Dex hand"><span class="text-[11px] font-semibold text-slate-400">Push-T · Dex hand</span></div>
+                <figcaption class="text-center text-xs font-semibold text-blue-brand mt-1.5">Dexterous hand</figcaption>
+              </figure>
+              <figure>
+                <div class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative" data-video="static/videos/pusht_gripper.mp4" data-video-label="Push-T · Gripper"><span class="text-[11px] font-semibold text-slate-400">Push-T · Gripper</span></div>
+                <figcaption class="text-center text-xs font-semibold text-coral-brand mt-1.5">Parallel-jaw gripper</figcaption>
+              </figure>
+            </div>
+          </div>
+          <div>
+            <div class="text-sm font-bold text-ink mb-3">Cable routing</div>
+            <div class="grid grid-cols-2 gap-4">
+              <figure>
+                <div class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative" data-video="static/videos/cable_hand.mp4" data-video-label="Cable · Dex hand"><span class="text-[11px] font-semibold text-slate-400">Cable · Dex hand</span></div>
+                <figcaption class="text-center text-xs font-semibold text-blue-brand mt-1.5">Dexterous hand</figcaption>
+              </figure>
+              <figure>
+                <div class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative" data-video="static/videos/cable_gripper.mp4" data-video-label="Cable · Gripper"><span class="text-[11px] font-semibold text-slate-400">Cable · Gripper</span></div>
+                <figcaption class="text-center text-xs font-semibold text-coral-brand mt-1.5">Parallel-jaw gripper</figcaption>
+              </figure>
+            </div>
+          </div>
+        </div>
+        <svg id="emb-chart" class="w-full mx-auto" style="max-width:25.625rem" role="img" aria-label="Success: dexterous hand vs parallel-jaw gripper"></svg>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ CLOSED-LOOP vs OPEN-LOOP (interactive violins + 1 video) ============ -->
+  <section id="comparison" class="py-12 sm:py-14 bg-slate-50">
     <div class="max-w-5xl mx-auto px-5">
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-blue-brand"></span> Closed-loop vs. open-loop
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">Closed-loop LUCID re-queries intent from the live scene and recovers from disturbances; an open-loop planner commits to a single plan at <span class="font-mono">t=0</span>.</p>
+      <p class="reveal text-slate-500 mb-8 text-[15px]"><span class="text-blue-brand font-medium">Closed-loop LUCID</span> re-queries intent from the live scene every cycle, so a missed grasp or a shifted object simply redirects the policy. The <span class="text-sage-brand font-medium">open-loop planner</span> instead generates one video of the whole task from the starting frame (Veo&nbsp;3.1), extracts a single flow-and-palm plan, and commits to it at <span class="font-mono">t=0</span>. Once execution drifts from that video, the plan is stale. The same tracking policy drives both; only the source of intent differs. Across the three web tasks, closed-loop reaches 73% vs 28%.</p>
 
-      <div class="grid md:grid-cols-2 gap-6">
-        <div class="reveal">
-          <div class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/closed_loop.mp4">
-            <div class="text-center">
-              <span class="inline-block rounded-full bg-blue-brand text-white text-xs font-semibold px-3 py-1 mb-2">LUCID (closed-loop)</span>
-              <p class="text-xs text-slate-500 font-mono">static/videos/closed_loop.mp4</p>
-            </div>
-          </div>
-        </div>
-        <div class="reveal">
-          <div class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/open_loop.mp4">
-            <div class="text-center">
-              <span class="inline-block rounded-full bg-sage-brand text-white text-xs font-semibold px-3 py-1 mb-2">Open-loop planner</span>
-              <p class="text-xs text-slate-500 font-mono">static/videos/open_loop.mp4</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="reveal mt-10">
-        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white max-w-3xl mx-auto">
-          <img src="static/images/success_violins.png" alt="Success rates" class="w-full" />
-        </figure>
-        <figcaption class="text-sm text-slate-500 mt-3 text-center">Closed-loop LUCID reaches 73% average success on web-supervised tasks vs. 28% for the open-loop baseline; one intent model drives both embodiments at comparable success on the smartphone-collected tasks.</figcaption>
-      </div>
-    </div>
-  </section>
-
-  <!-- ============ GENERALIZATION ============ -->
-  <section id="generalization" class="py-16 sm:py-20 bg-slate-50 dark:bg-white/[.03]">
-    <div class="max-w-5xl mx-auto px-5">
-      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
-        <span class="h-6 w-1.5 rounded bg-sage-brand"></span> Zero-shot generalization
-      </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">The intent model is supervised on internet video and transfers zero-shot to <span class="text-blue-brand font-medium">novel scenes</span>, <span class="text-blue-brand font-medium">camera viewpoints</span>, and <span class="text-blue-brand font-medium">object instances</span> it never saw.</p>
       <div class="reveal">
-        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white">
-          <img src="static/images/task_gallery.png" alt="Task gallery across scenes and objects" class="w-full" />
-        </figure>
+        <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-9">
+          <figure>
+            <div class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative" data-video="static/videos/closed_loop.mp4" data-video-label="Closed loop" data-video-loop="false"><span class="text-[11px] font-semibold text-slate-400">Closed loop</span></div>
+            <figcaption class="text-center text-xs font-semibold text-blue-brand mt-1.5">LUCID closed-loop</figcaption>
+          </figure>
+          <figure>
+            <div class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative" data-video="static/videos/open_loop.mp4" data-video-label="Open loop" data-video-loop="false"><span class="text-[11px] font-semibold text-slate-400">Open loop</span></div>
+            <figcaption class="text-center text-xs font-semibold text-sage-brand mt-1.5">Open-loop planner</figcaption>
+          </figure>
+        </div>
+        <svg id="owc-chart" class="w-full mx-auto" style="max-width:37.125rem" role="img" aria-label="Success: LUCID closed-loop vs open-loop planner"></svg>
       </div>
     </div>
   </section>
 
-  <!-- ============ SCALING ============ -->
-  <section id="scaling" class="py-16 sm:py-20">
+  <!-- ============ SCALING (interactive) ============ -->
+  <section id="scaling" class="py-12 sm:py-14">
     <div class="max-w-5xl mx-auto px-5">
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-mustard-brand"></span> Scaling with video
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">Performance improves predictably with the amount of training video — both held-out intent loss and downstream real-world success.</p>
-      <div class="reveal">
-        <figure class="rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 bg-white max-w-3xl mx-auto p-4">
-          <img src="static/images/scaling.png" alt="Scaling curves" class="w-full" />
-        </figure>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">More human video, better intent. As the binning corpus grows from 1k to 20k clips, held-out <span class="text-mustard-brand font-medium">intent loss</span> falls steadily and <span class="text-blue-brand font-medium">real-world success</span> climbs with it, so the error the model is trained on translates straight into task success. Drag the slider to step through checkpoints and watch the same rollout sharpen.</p>
+
+      <div class="grid md:grid-cols-2 gap-8 items-center reveal">
+        <div>
+          <div id="scale-video" class="rounded-xl overflow-hidden video-placeholder aspect-video bg-slate-100 flex items-center justify-center relative"></div>
+          <div class="mt-6">
+            <input id="scale-slider" type="range" min="0" max="2" step="0.01" value="0" class="lucid-slider w-full" aria-label="Training clips" />
+            <div class="relative h-5 text-xs font-semibold text-slate-500 mt-2">
+              <span style="position:absolute;left:11px;transform:translateX(-50%)">2k</span>
+              <span style="position:absolute;left:50%;transform:translateX(-50%)">5k</span>
+              <span style="position:absolute;right:11px;transform:translateX(50%)">20k</span>
+            </div>
+            <p class="text-center text-sm font-bold text-blue-brand mt-3" id="scale-readout"></p>
+            <p class="text-center text-[11px] uppercase tracking-wider text-slate-400 mt-0.5">drag to scale training data</p>
+          </div>
+        </div>
+        <div>
+          <svg id="scale-chart" class="w-full" role="img" aria-label="Scaling: success and intent loss vs training clips"></svg>
+        </div>
       </div>
     </div>
   </section>
 
-  <!-- ============ EMERGENT BEHAVIORS ============ -->
-  <section id="emergent" class="py-16 sm:py-20 bg-slate-50 dark:bg-white/[.03]">
+  <!-- ============ FAILURE CASES (3-up carousel with arrows) ============ -->
+  <section id="failures" class="py-12 sm:py-14 bg-slate-50">
     <div class="max-w-5xl mx-auto px-5">
-      <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
-        <span class="h-6 w-1.5 rounded bg-lavender-brand"></span> Emergent behaviors
-      </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">Closed-loop intent yields behaviors we never explicitly supervised — recovering from slips, re-approaching, and composing sub-skills within a single rollout.</p>
-      <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
-        <div class="reveal rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/emergent_recovery.mp4">
-          <div class="text-center px-4"><span class="text-xs font-semibold text-slate-500 block mb-1">Disturbance recovery</span><span class="text-[11px] font-mono text-slate-400">static/videos/emergent_recovery.mp4</span></div>
-        </div>
-        <div class="reveal rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/emergent_reapproach.mp4">
-          <div class="text-center px-4"><span class="text-xs font-semibold text-slate-500 block mb-1">Re-approach</span><span class="text-[11px] font-mono text-slate-400">static/videos/emergent_reapproach.mp4</span></div>
-        </div>
-        <div class="reveal rounded-xl overflow-hidden ring-1 ring-slate-200 dark:ring-white/10 video-placeholder aspect-video flex items-center justify-center bg-slate-100 dark:bg-white/5" data-video="static/videos/emergent_compose.mp4">
-          <div class="text-center px-4"><span class="text-xs font-semibold text-slate-500 block mb-1">Task composition</span><span class="text-[11px] font-mono text-slate-400">static/videos/emergent_compose.mp4</span></div>
+      <div class="flex items-end justify-between mb-2 gap-4">
+        <h2 class="reveal text-2xl font-bold tracking-tight flex items-center gap-3">
+          <span class="h-6 w-1.5 rounded bg-coral-brand"></span> Failure cases
+        </h2>
+        <div class="flex gap-2">
+          <button id="fail-prev" class="carousel-arrow" aria-label="Previous">&#8249;</button>
+          <button id="fail-next" class="carousel-arrow" aria-label="Next">&#8250;</button>
         </div>
       </div>
-    </div>
-  </section>
-
-  <!-- ============ BIBTEX ============ -->
-  <section id="bibtex" class="py-16 sm:py-20">
-    <div class="max-w-4xl mx-auto px-5">
-      <h2 class="reveal text-2xl font-bold tracking-tight mb-6 flex items-center gap-3">
-        <span class="h-6 w-1.5 rounded bg-lavender-brand"></span> BibTeX
-      </h2>
-      <div class="reveal relative">
-        <button id="copy-bib" class="absolute top-3 right-3 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-medium px-3 py-1.5 transition">Copy</button>
-        <pre class="rounded-xl bg-ink text-slate-200 p-5 overflow-x-auto text-[13px] leading-relaxed font-mono"><code id="bib-text">@article{gupta2026lucid,
-  title   = {LUCID: Learning Embodiment-Agnostic Intent Models from
-             Unstructured Human Videos for Scalable Dexterous Robot
-             Skill Acquisition},
-  author  = {Gupta, Harsh and Shi, Guanya and Yuan, Wenzhen},
-  journal = {arXiv preprint},
-  year    = {2026},
-}</code></pre>
+      <p class="reveal text-slate-500 mb-6 text-[15px]">Where LUCID breaks down, with the dominant failure mode tagged for each. Perception drops the object, a physical slip becomes unrecoverable, or the behavior is something the embodiment cannot pull off.</p>
+      <div class="overflow-x-clip py-2">
+        <div id="failure-track" class="flex gap-4 transition-transform duration-300 ease-out"></div>
       </div>
     </div>
   </section>
 
   <!-- ============ FOOTER ============ -->
-  <footer class="border-t border-slate-200 dark:border-white/10 py-10">
+  <footer class="border-t border-slate-200 py-10">
     <div class="max-w-5xl mx-auto px-5 text-center text-sm text-slate-500">
-      <p class="mb-2">University of Illinois Urbana-Champaign &nbsp;·&nbsp; Carnegie Mellon University</p>
-      <p class="text-xs text-slate-400">Website template built for LUCID. Page content © the authors.</p>
+      <p class="text-xs text-slate-400">LUCID · Page content © the authors.</p>
     </div>
   </footer>
 
-  <script src="static/js/main.js"></script>
+  <script src="static/js/charts.js?v=20260605-chart-dismiss-1"></script>
+  <script src="static/js/main.js?v=20260605-hero-fullscreen-audio-1"></script>
 </body>
 </html>
