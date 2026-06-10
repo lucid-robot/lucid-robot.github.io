@@ -6,9 +6,9 @@
   <title>LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos</title>
 
   <!-- SEO / social link previews -->
-  <meta name="description" content="LUCID learns a manipulation intent model from unstructured human video and a tracking policy in simulation, pairing them for dexterous and parallel-jaw robot manipulation." />
+  <meta name="description" content="LUCID learns a manipulation intent model from unstructured human video and a sensorimotor policy in simulation, pairing them for dexterous and parallel-jaw robot manipulation." />
   <meta property="og:title" content="LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos" />
-  <meta property="og:description" content="A two-stage framework: closed-loop intent from human video + a tracking policy from massively-parallel simulation, shared across embodiments." />
+  <meta property="og:description" content="A two-stage framework: closed-loop intent from human video + a sensorimotor policy from massively-parallel simulation, shared across embodiments." />
   <meta property="og:type" content="website" />
   <meta property="og:image" content="static/images/teaser.jpg" />
   <meta name="twitter:card" content="summary_large_image" />
@@ -534,7 +534,7 @@
     <!-- hero teaser video slot -->
     <div class="max-w-5xl mx-auto px-5 mt-10 reveal">
       <div class="rounded-2xl overflow-hidden shadow-2xl">
-        <div class="video-placeholder relative aspect-video flex items-center justify-center bg-slate-100" data-video="static/videos/teaser.mp4?v=20260605-hero-optimized-1" data-video-speed="1" data-video-speed-control="false" data-video-audio="true" data-video-loop="false" data-video-volume="0.7">
+        <div class="video-placeholder relative aspect-video flex items-center justify-center bg-slate-100" data-video="static/videos/teaser.mp4?v=20260610-hero-optimized-3" data-video-speed="1" data-video-speed-control="false" data-video-audio="true" data-video-loop="false" data-video-volume="0.7">
           <img src="static/images/teaser.jpg" alt="LUCID teaser" class="absolute inset-0 w-full h-full object-contain p-4 opacity-90" />
           <div class="relative z-10 flex flex-col items-center gap-2 bg-white/80 rounded-xl px-5 py-3 backdrop-blur">
             <svg class="w-9 h-9 text-blue-brand" viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
@@ -552,7 +552,7 @@
         <span class="h-6 w-1.5 rounded bg-blue-brand"></span> Abstract
       </h2>
       <p class="text-[15px] leading-relaxed text-slate-700">
-        The most widely-adopted robot learning pipelines today learn skills from robot demonstrations or structured human data, which are expensive to collect and tied to specific embodiments. In contrast, unstructured human videos provide a scalable alternative. They contain diverse manipulation demonstrations across objects, scenes, and strategies, but are not directly connected to robot action. We propose LUCID, a two-stage framework that learns task intent from unstructured human videos drawn from internet-scale datasets and learns robot control in massively-parallel simulation. The intent model predicts short-horizon intent (what should happen next in the scene) from the current observation in closed loop. An embodiment-specific tracking policy converts this intent into robot actions. The intent interface is shared across controllers, so the same intent model can be applied to different embodiments, from our primary dexterous hand to a parallel-jaw gripper. We evaluate LUCID on five real-world manipulation tasks. Stirring, wiping, and binning are supervised by only internet video, with zero-shot transfer to novel scenes and object instances; push-T and cable routing are supervised by 1&nbsp;hr each of self-collected smartphone video.
+        The most widely-adopted robot learning pipelines today learn skills from robot demonstrations or structured human data, which are expensive to collect and tied to specific embodiments. In contrast, unstructured human videos provide a scalable alternative. They contain diverse manipulation demonstrations across objects, scenes, and strategies, but are not directly connected to robot action. We propose LUCID, a two-stage framework that learns task intent from unstructured human videos drawn from internet-scale datasets and learns robot control in massively-parallel simulation. The intent model predicts short-horizon intent (what should happen next in the scene) from the current observation in closed loop. An embodiment-specific sensorimotor policy converts this intent into robot actions. The intent interface is shared across controllers, so the same intent model can be applied to different embodiments, from our primary dexterous hand to a parallel-jaw gripper. We evaluate LUCID on five real-world manipulation tasks. Stirring, wiping, and binning are supervised by only internet video, with zero-shot transfer to novel scenes and object instances; push-T and cable routing are supervised by 1&nbsp;hr each of self-collected smartphone video.
       </p>
     </div>
   </section>
@@ -564,7 +564,7 @@
         <span class="h-6 w-1.5 rounded bg-sage-brand"></span> Method
       </h2>
       <p class="reveal text-slate-500 mb-5 text-[15px]">
-        LUCID splits the problem in two. A robot-agnostic <span class="text-blue-brand font-medium">intent model</span>, learned from unstructured human video, predicts what should happen next in the scene. An embodiment-specific <span class="text-sage-brand font-medium">tracking policy</span>, learned in massively-parallel simulation, works out how a particular robot makes that happen. They meet at one short-horizon reference, object flow (where points on the object should move over the next second) plus a rough palm pose, and that is all that crosses between them.
+        LUCID splits the problem in two. A robot-agnostic <span class="text-blue-brand font-medium">intent model</span>, learned from unstructured human video, predicts what should happen next in the scene. An embodiment-specific <span class="text-sage-brand font-medium">sensorimotor policy</span>, learned in massively-parallel simulation, works out how a particular robot makes that happen. They meet at one short-horizon reference, object flow (where points on the object should move over the next second) plus a rough palm pose, and that is all that crosses between them.
       </p>
       <div class="h-px w-full mb-9" style="background-color: rgba(226, 232, 240, 0.8);" aria-hidden="true"></div>
 
@@ -583,16 +583,16 @@
       </div>
       <div class="h-px w-full mb-8" style="background-color: rgba(226, 232, 240, 0.8);" aria-hidden="true"></div>
 
-      <!-- Stage 2 — tracking: wide image on top, text below -->
+      <!-- Stage 2 — sensorimotor policy: wide image on top, text below -->
       <div class="reveal">
         <div class="text-xs font-bold uppercase tracking-wider text-sage-brand mb-1">Stage 2</div>
         <h3 class="text-lg font-bold mb-3">Control from simulation</h3>
         <figure class="mb-4">
           <div class="method-svg w-full" data-key="method_tracking.svg">
-            <img src="static/images/method_tracking.svg" alt="Tracking policy" class="w-full block" />
+            <img src="static/images/method_tracking.svg" alt="Sensorimotor policy" class="w-full block" />
           </div>
         </figure>
-        <p class="text-slate-600 leading-relaxed text-[15px] max-w-4xl">A goal-conditioned policy, trained once in massively-parallel simulation, turns the intent reference into joint commands for a specific robot. We first train a teacher with reinforcement learning on privileged simulator state, including object flow over surfaces an external camera cannot see, then distill it into a student that runs from onboard cameras alone. Heavy domain randomization and a difficulty curriculum carry it to the real robot, and the same recipe, re-trained against the same intent interface, drives a parallel-jaw gripper.</p>
+        <p class="text-slate-600 leading-relaxed text-[15px] max-w-4xl">A goal-conditioned sensorimotor policy, trained once in massively-parallel simulation, turns the intent reference into joint commands for a specific robot. We first train a teacher with reinforcement learning on privileged simulator state, including object flow over surfaces an external camera cannot see, then distill it into a student that runs from onboard cameras alone. Heavy domain randomization and a difficulty curriculum carry it to the real robot, and the same recipe, re-trained against the same intent interface, drives a parallel-jaw gripper.</p>
       </div>
     </div>
   </section>
@@ -615,7 +615,7 @@
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-coral-brand"></span> One intent model, two embodiments
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">Intent is only object flow plus a palm pose, and it never mentions fingers, so nothing about it is tied to one robot. Here the same intent model drives a <span class="text-blue-brand font-medium">dexterous hand</span> and a <span class="text-coral-brand font-medium">parallel-jaw gripper</span> on push-T and cable routing (1&nbsp;hr of smartphone video each). The two reach identical aggregate success (19/30) despite completely different hardware, since only the tracking policy was swapped. <span class="text-slate-400">Hover a violin for the per-task split.</span></p>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Intent is only object flow plus a palm pose, and it never mentions fingers, so nothing about it is tied to one robot. Here the same intent model drives a <span class="text-blue-brand font-medium">dexterous hand</span> and a <span class="text-coral-brand font-medium">parallel-jaw gripper</span> on push-T and cable routing (1&nbsp;hr of smartphone video each). The two reach identical aggregate success (19/30) despite completely different hardware, since only the sensorimotor policy was swapped. <span class="text-slate-400">Hover a violin for the per-task split.</span></p>
 
       <div class="reveal">
         <div class="space-y-6 mb-10">
@@ -657,7 +657,7 @@
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-blue-brand"></span> Closed-loop vs. open-loop
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]"><span class="text-blue-brand font-medium">Closed-loop LUCID</span> re-queries intent from the live scene every cycle, so a missed grasp or a shifted object simply redirects the policy. The <span class="text-sage-brand font-medium">open-loop planner</span> instead generates one video of the whole task from the starting frame (Veo&nbsp;3.1), extracts a single flow-and-palm plan, and commits to it at <span class="font-mono">t=0</span>. Once execution drifts from that video, the plan is stale. The same tracking policy drives both; only the source of intent differs. Across the three web tasks, closed-loop reaches 73% vs 28%.</p>
+      <p class="reveal text-slate-500 mb-8 text-[15px]"><span class="text-blue-brand font-medium">Closed-loop LUCID</span> re-queries intent from the live scene every cycle, so a missed grasp or a shifted object simply redirects the policy. The <span class="text-sage-brand font-medium">open-loop planner</span> instead generates one video of the whole task from the starting frame (Veo&nbsp;3.1), extracts a single flow-and-palm plan, and commits to it at <span class="font-mono">t=0</span>. Once execution drifts from that video, the plan is stale. The same sensorimotor policy drives both; only the source of intent differs. Across the three web tasks, closed-loop reaches 73% vs 28%.</p>
 
       <div class="reveal">
         <div class="grid grid-cols-2 gap-3 sm:gap-4 mb-9">

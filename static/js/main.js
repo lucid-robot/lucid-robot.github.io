@@ -679,7 +679,7 @@ document.querySelectorAll('[data-tabs]').forEach((group) => {
       { t: 'Object flow', d: 'The predicted 3D path of each query point over the next ~1 s, meaning where the object should move. It says nothing about fingers, so any embodiment can chase it.', g: 'claude_object_flow', col: '#FF8400', hitPad: 14 },
       { t: 'Reference palm pose', d: 'The predicted palm-pose trajectory, roughly where the hand should be and how it should be oriented to drive that motion.', g: 'claude_reference_palm', col: '#7C00F0', hitPad: 16 },
     ],
-    // ---- Stage 2: tracking policy. Every concept is its own named Figma group
+    // ---- Stage 2: sensorimotor policy. Every concept is its own named Figma group
     // (claude_*), so matching is a pure name lookup — no colors, no heuristics. ----
     'method_tracking.svg': [
       { t: 'Occluded object flow', d: 'Object flow sampled over the full object surface, including points the camera cannot see. Only the simulator can supply this, so it is a privileged input the teacher alone receives.', g: 'claude_occluded_flow', col: '#0088FF', hitPad: 14 },
