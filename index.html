@@ -628,7 +628,7 @@
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-coral-brand"></span> One intent model, two embodiments
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">Intent is only object flow plus a palm pose, and it never mentions fingers, so nothing about it is tied to one robot. Here the same intent model drives a <span class="text-blue-brand font-medium">dexterous hand</span> and a <span class="text-coral-brand font-medium">parallel-jaw gripper</span> on push-T and cable routing (1&nbsp;hr of smartphone video each). The two reach identical aggregate success (19/30) despite completely different hardware, since only the sensorimotor policy was swapped. <span class="text-slate-400">Hover a violin for the per-task split.</span></p>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">Intent is only object flow plus a palm pose, and it never mentions fingers, so nothing about it is tied to one robot. Here the same intent model drives a <span class="text-blue-brand font-medium">dexterous hand</span> and a <span class="text-coral-brand font-medium">parallel-jaw gripper</span> on push-T and cable routing (1&nbsp;hr of smartphone video each). The two reach identical aggregate success (19/30) despite completely different hardware, since only the sensorimotor policy was swapped.</p>
 
       <div class="reveal">
         <div class="space-y-6 mb-10">
@@ -694,7 +694,7 @@
       <h2 class="reveal text-2xl font-bold tracking-tight mb-2 flex items-center gap-3">
         <span class="h-6 w-1.5 rounded bg-mustard-brand"></span> Scaling with video
       </h2>
-      <p class="reveal text-slate-500 mb-8 text-[15px]">More human video, better intent. As the binning corpus grows from 1k to 20k clips, held-out <span class="text-mustard-brand font-medium">intent loss</span> falls steadily and <span class="text-blue-brand font-medium">real-world success</span> climbs with it, so the error the model is trained on translates straight into task success. Drag the slider to step through checkpoints and watch the same rollout sharpen.</p>
+      <p class="reveal text-slate-500 mb-8 text-[15px]">More human video, better intent. As the binning corpus grows from 1k to 20k clips, held-out <span class="text-mustard-brand font-medium">intent loss</span> falls steadily and <span class="text-blue-brand font-medium">real-world success</span> climbs with it, so the error the model is trained on translates straight into task success. Drag the slider to step through checkpoints and watch the same rollout performance improve.</p>
 
       <div class="grid md:grid-cols-2 gap-8 items-center reveal">
         <div>
@@ -729,7 +729,7 @@
           <button id="fail-next" class="carousel-arrow" aria-label="Next">&#8250;</button>
         </div>
       </div>
-      <p class="reveal text-slate-500 mb-6 text-[15px]">Where LUCID breaks down, with the dominant failure mode tagged for each. Perception drops the object, a physical slip becomes unrecoverable, or the behavior is something the embodiment cannot pull off.</p>
+      <p class="reveal text-slate-500 mb-6 text-[15px]">Where LUCID breaks down, with the dominant failure mode tagged for each.</p>
       <div class="overflow-x-clip py-2">
         <div id="failure-track" class="flex gap-4 transition-transform duration-300 ease-out"></div>
       </div>
