@@ -1293,11 +1293,54 @@ if (ftrack) {
 // ---------- external links (fill these once live) ----------
 const LINKS = {
   paper: 'static/paper.pdf',
-  arxiv: '#',  // e.g. 'https://arxiv.org/abs/XXXX.XXXXX'
+  arxiv: 'https://arxiv.org/abs/2606.11628',
   code:  '#',  // e.g. 'https://github.com/hgupt3/lucid'
   video: '#',  // e.g. 'https://youtu.be/XXXXXXXX'
 };
+const BIBTEX = `@misc{gupta2026lucidlearningembodimentagnosticintent,
+      title={LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos for Scalable Dexterous Robot Skill Acquisition}, 
+      author={Harsh Gupta and Guanya Shi and Wenzhen Yuan},
+      year={2026},
+      eprint={2606.11628},
+      archivePrefix={arXiv},
+      primaryClass={cs.RO},
+      url={https://arxiv.org/abs/2606.11628}, 
+}`;
+async function copyBibtex() {
+  if (navigator.clipboard && window.isSecureContext) {
+    await navigator.clipboard.writeText(BIBTEX);
+    return true;
+  }
+  const textarea = document.createElement('textarea');
+  textarea.value = BIBTEX;
+  textarea.setAttribute('readonly', '');
+  textarea.style.position = 'fixed';
+  textarea.style.left = '-9999px';
+  document.body.appendChild(textarea);
+  textarea.select();
+  const copied = document.execCommand('copy');
+  textarea.remove();
+  return copied;
+}
 document.querySelectorAll('[data-link]').forEach((a) => {
+  if (a.dataset.link === 'bibtex') {
+    a.addEventListener('click', async (e) => {
+      e.preventDefault();
+      try {
+        await copyBibtex();
+        const label = a.querySelector('[data-bibtex-label]');
+        const oldLabel = label && label.textContent;
+        const oldTitle = a.getAttribute('title') || 'BibTeX';
+        if (label) label.textContent = 'Copied';
+        a.setAttribute('title', 'BibTeX copied');
+        window.setTimeout(() => {
+          if (label && oldLabel) label.textContent = oldLabel;
+          a.setAttribute('title', oldTitle);
+        }, 1400);
+      } catch (_) {}
+    });
+    return;
+  }
   const url = LINKS[a.dataset.link];
   if (url && url !== '#') {
     a.href = url;
