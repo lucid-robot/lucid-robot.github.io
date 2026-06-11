@@ -216,6 +216,18 @@
       top: 20px; left: 20px; border-radius: 12px; font-size: 14px; padding: 9px 12px;
     }
     ::selection { background: rgba(74,123,166,.25); }
+    .bibtex-pre {
+      max-width: 100%;
+      overflow-x: hidden;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+      word-break: break-word;
+    }
+    .bibtex-pre code {
+      white-space: inherit;
+      overflow-wrap: inherit;
+      word-break: inherit;
+    }
     /* justify long-form body copy */
     section p { text-align: justify; text-justify: inter-word; hyphens: auto; }
     @media (max-width: 767px) {
@@ -751,7 +763,7 @@
       </h2>
       <div class="reveal relative">
         <button id="copy-bib" class="absolute top-3 right-3 rounded-lg bg-white/10 hover:bg-white/20 text-slate-300 text-xs font-medium px-3 py-1.5 transition">Copy</button>
-        <pre class="rounded-xl bg-ink text-slate-200 p-5 whitespace-pre-wrap break-words text-[13px] leading-relaxed font-mono text-left"><code id="bib-text">@misc{gupta2026lucidlearningembodimentagnosticintent,
+        <pre class="bibtex-pre rounded-xl bg-ink text-slate-200 p-5 text-[13px] leading-relaxed font-mono text-left"><code id="bib-text">@misc{gupta2026lucidlearningembodimentagnosticintent,
       title={LUCID: Learning Embodiment-Agnostic Intent Models from Unstructured Human Videos for Scalable Dexterous Robot Skill Acquisition}, 
       author={Harsh Gupta and Guanya Shi and Wenzhen Yuan},
       year={2026},
