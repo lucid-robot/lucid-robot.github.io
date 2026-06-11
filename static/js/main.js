@@ -1319,7 +1319,7 @@ const LINKS = {
   paper: 'static/paper.pdf',
   arxiv: 'https://arxiv.org/abs/2606.11628',
   code:  '#',  // e.g. 'https://github.com/hgupt3/lucid'
-  video: '#',  // e.g. 'https://youtu.be/XXXXXXXX'
+  demo: '#',
 };
 async function copyText(text) {
   if (navigator.clipboard && window.isSecureContext) {
