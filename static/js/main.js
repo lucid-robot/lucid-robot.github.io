@@ -225,11 +225,24 @@ const LucidVideo = (() => {
     p.scrubRaf = 0;
   }
 
+  function controlsShowing(p) {
+    return p.slot.classList.contains('is-controls')
+      || fullscreenElement() === p.slot
+      || p.slot.matches(':hover')
+      || p.slot.matches(':focus-within');
+  }
+
   function startScrubLoop(p) {
     if (p.scrubRaf) return;
     const tick = () => {
+      // run only while the controls are showing on a playing video — an idle
+      // rAF loop forces the renderer through an animation frame every vsync
+      // (~20% of a core next to a playing video, 21 looping videos on the
+      // page). While the controls are hidden, the 'timeupdate' listener keeps
+      // the scrub current at ~4Hz instead, and hover/focus/reveal restart us.
+      if (p.video.paused || !controlsShowing(p)) { p.scrubRaf = 0; return; }
       updateScrub(p);
-      p.scrubRaf = p.video.paused ? 0 : requestAnimationFrame(tick);
+      p.scrubRaf = requestAnimationFrame(tick);
     };
     p.scrubRaf = requestAnimationFrame(tick);
   }
@@ -263,6 +276,7 @@ const LucidVideo = (() => {
 
   function revealControls(p, timeout = touchish ? 2600 : 1600) {
     p.slot.classList.add('is-controls');
+    startScrubLoop(p);
     clearTimeout(p.controlsTimer);
     p.controlsTimer = setTimeout(() => {
       if (!p.userPaused && !p.video.paused) p.slot.classList.remove('is-controls');
@@ -401,6 +415,7 @@ const LucidVideo = (() => {
           updatePlayer(p);
         });
         video.addEventListener('play', () => { startScrubLoop(p); setPausedClass(p); syncAudioControls(p); });
+        video.addEventListener('timeupdate', () => { if (!p.scrubRaf) updateScrub(p); });
         video.addEventListener('pause', () => { stopScrubLoop(p); updateScrub(p); setPausedClass(p); syncAudioControls(p); });
         video.addEventListener('ended', () => {
           if (!p.loop) p.userPaused = true;
@@ -496,6 +511,8 @@ const LucidVideo = (() => {
             if (fs && fs.catch) fs.catch(() => { fullscreenPlayer = null; scheduleRefresh(); });
           }
         });
+        slot.addEventListener('pointerenter', () => startScrubLoop(p));
+        slot.addEventListener('focusin', () => startScrubLoop(p));
         slot.addEventListener('click', (e) => {
           if (controls.contains(e.target) || speedBtn.contains(e.target)) return;
           if (touchish && !slot.classList.contains('is-controls') && !p.video.paused) {
@@ -520,7 +537,7 @@ const LucidVideo = (() => {
     const activeElement = fullscreenElement();
     const active = [...players].find((p) => p.slot === activeElement);
     fullscreenPlayer = active || null;
-    if (fullscreenPlayer) fullscreenPlayer.userPaused = false;
+    if (fullscreenPlayer) { fullscreenPlayer.userPaused = false; startScrubLoop(fullscreenPlayer); }
     players.forEach(placeSpeedButton);
     scheduleRefresh();
   }
@@ -965,10 +982,17 @@ document.querySelectorAll('[data-tabs]').forEach((group) => {
     c.appendChild(hint);
     positionHint(hint, svg, c.dataset.key);
 
+    // the nudge loops forever; pause its animations while offscreen so they
+    // don't keep the compositor busy for a hint nobody can see
+    const hintIO = new IntersectionObserver(([e]) => hint.classList.toggle('offstage', !e.isIntersecting));
+    hintIO.observe(hint);
+
     let hintDismissed = false;
     function dismissHint() {
       if (hintDismissed) return;
       hintDismissed = true;
+      hintIO.disconnect();
+      hint.classList.remove('offstage');
       hint.classList.add('popout');
       setTimeout(() => hint.classList.add('gone'), 360);
     }

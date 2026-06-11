@@ -399,6 +399,10 @@
     .method-hint.gone {
       opacity: 0; transform: translate(-50%, -104%) scale(.92); animation: none;
     }
+    /* offscreen: freeze the looping nudge animations (resumed when scrolled back) */
+    .method-hint.offstage,
+    .method-hint.offstage::before,
+    .method-hint.offstage .method-hint__icon svg { animation-play-state: paused; }
     .method-hint.popout {
       animation: methodHintOut .34s cubic-bezier(.16,1,.3,1) forwards;
     }
@@ -772,6 +776,6 @@
   </footer>
 
   <script src="static/js/charts.js?v=20260605-chart-dismiss-1"></script>
-  <script src="static/js/main.js?v=20260610-arxiv-bibtex-2"></script>
+  <script src="static/js/main.js?v=20260610-idle-scrub-perf-4"></script>
 </body>
 </html>
