@@ -1308,8 +1308,10 @@ const BIBTEX = `@misc{gupta2026lucidlearningembodimentagnosticintent,
 }`;
 async function copyBibtex() {
   if (navigator.clipboard && window.isSecureContext) {
-    await navigator.clipboard.writeText(BIBTEX);
-    return true;
+    try {
+      await navigator.clipboard.writeText(BIBTEX);
+      return true;
+    } catch (_) {}
   }
   const textarea = document.createElement('textarea');
   textarea.value = BIBTEX;
@@ -1328,16 +1330,16 @@ document.querySelectorAll('[data-link]').forEach((a) => {
       e.preventDefault();
       try {
         await copyBibtex();
-        const label = a.querySelector('[data-bibtex-label]');
-        const oldLabel = label && label.textContent;
-        const oldTitle = a.getAttribute('title') || 'BibTeX';
-        if (label) label.textContent = 'Copied';
-        a.setAttribute('title', 'BibTeX copied');
-        window.setTimeout(() => {
-          if (label && oldLabel) label.textContent = oldLabel;
-          a.setAttribute('title', oldTitle);
-        }, 1400);
       } catch (_) {}
+      const label = a.querySelector('[data-bibtex-label]');
+      const oldLabel = label && label.textContent;
+      const oldTitle = a.getAttribute('title') || 'BibTeX';
+      if (label) label.textContent = 'Copied';
+      a.setAttribute('title', 'BibTeX copied');
+      window.setTimeout(() => {
+        if (label && oldLabel) label.textContent = oldLabel;
+        a.setAttribute('title', oldTitle);
+      }, 1400);
     });
     return;
   }
