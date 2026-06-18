@@ -1320,6 +1320,7 @@ const LINKS = {
   arxiv: 'https://arxiv.org/abs/2606.11628',
   code:  '#',  // e.g. 'https://github.com/hgupt3/lucid'
   demo: '#',
+  thread: 'https://x.com/hgupt3/status/2067623595959005209',
 };
 async function copyText(text) {
   if (navigator.clipboard && window.isSecureContext) {
